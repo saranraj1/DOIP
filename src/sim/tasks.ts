@@ -40,7 +40,10 @@ function ensureSocket() {
   if (wsTried || typeof window === "undefined") return;
   wsTried = true;
   try {
-    ws = new WebSocket(wsUrl("/ws/warroom"));
+    const storedToken = window.localStorage.getItem("doip.token") ?? "";
+    const url =
+      wsUrl("/ws/warroom") + (storedToken ? `?token=${encodeURIComponent(storedToken)}` : "");
+    ws = new WebSocket(url);
     ws.onmessage = (msg) => {
       try {
         const op = JSON.parse(String(msg.data)) as WireOp;
@@ -96,5 +99,9 @@ export const taskStore = {
 };
 
 export function useTasks(): WarTask[] {
-  return useSyncExternalStore(taskStore.subscribe, () => tasks, () => tasks);
+  return useSyncExternalStore(
+    taskStore.subscribe,
+    () => tasks,
+    () => tasks,
+  );
 }

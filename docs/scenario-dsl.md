@@ -13,28 +13,28 @@ seed: 42
 
 entities:
   - id: g1
-    type: ground_team          # ground_team | drone | depot | vehicle
+    type: ground_team # ground_team | drone | depot | vehicle
     callsign: "ALPHA-1"
-    start: [77.52, 12.97]      # [lon, lat]
-    behavior: patrol           # patrol | idle | follow_route | respond
+    start: [77.52, 12.97] # [lon, lat]
+    behavior: patrol # patrol | idle | follow_route | respond
     patrol_zone: "zone_a"
     personnel: 5
     battery_pct: 100
-    resources: {fuel: 1.0, medkit: 2, food: 1.0, battery: 1.0}
+    resources: { fuel: 1.0, medkit: 2, food: 1.0, battery: 1.0 }
 
-entity_groups:                  # loader shorthand — expands to N entities
+entity_groups: # loader shorthand — expands to N entities
   - count: 8
-    template: {type: ground_team, behavior: patrol, patrol_zone: "zone_b", personnel: 4}
-    id_prefix: "g"             # deterministic ids g2..g9
+    template: { type: ground_team, behavior: patrol, patrol_zone: "zone_b", personnel: 4 }
+    id_prefix: "g" # deterministic ids g2..g9
 
 timeline:
   - at: "+00:30"
     action: spawn_weather
-    params: {kind: storm, intensity: 0.7, center: [77.55, 12.99], radius_km: 4, drift_kmh: 10}
+    params: { kind: storm, intensity: 0.7, center: [77.55, 12.99], radius_km: 4, drift_kmh: 10 }
 
 rules:
   - when: unit_in_weather(g1, storm, 0.5)
-    then: {action: modify_speed, params: {unit: g1, multiplier: 0.6}}
+    then: { action: modify_speed, params: { unit: g1, multiplier: 0.6 } }
 
 end_conditions:
   - sim_time_elapsed

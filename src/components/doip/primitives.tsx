@@ -93,10 +93,13 @@ function AnimatedNumber({ value, decimals = 0 }: { value: number; decimals?: num
       const t = setTimeout(() => setFlash(false), 420);
       return () => clearTimeout(t);
     }
+    return undefined;
   }, [value]);
   return (
-    <span key={flash ? "flash" : "still"}
-          className={flash ? "doip-count-flash inline-block" : "inline-block"}>
+    <span
+      key={flash ? "flash" : "still"}
+      className={flash ? "doip-count-flash inline-block" : "inline-block"}
+    >
       {decimals > 0 ? animated.toFixed(decimals) : Math.round(animated)}
     </span>
   );
@@ -139,7 +142,10 @@ export function EmptyState({ label, hint }: { label: string; hint?: string }) {
 // ---------------------------------------------------------------------------
 // LoadingState  —  §18.8: skeleton shimmer instead of a bare spinner.
 // ---------------------------------------------------------------------------
-export function LoadingState({ label = "Awaiting telemetry", rows = 3 }: {
+export function LoadingState({
+  label = "Awaiting telemetry",
+  rows = 3,
+}: {
   label?: string;
   rows?: number;
 }) {

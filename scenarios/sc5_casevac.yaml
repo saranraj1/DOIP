@@ -1,0 +1,90 @@
+name: "SC-5 Forward Post Casualty Evacuation"
+id: "SC-5"
+area: "geo/mountain_sector.geojson"
+sim_start: "2026-01-14T11:00:00"
+duration_minutes: 180
+seed: 5001
+
+entities:
+  - id: med1
+    type: vehicle
+    callsign: "AMBULANCE-1"
+    start: [77.53, 12.94]
+    behavior: respond
+    patrol_zone: "mountain_pass_charlie"
+    personnel: 4
+    battery_pct: 100
+    resources: { fuel: 100, medkit: 40, food: 50, battery: 100 }
+  - id: outpost1
+    type: depot
+    callsign: "OUTPOST-BRAVO"
+    start: [77.58, 12.99]
+    behavior: idle
+    patrol_zone: "outpost_perimeter"
+    personnel: 24
+    battery_pct: 90
+    resources: { fuel: 1200, medkit: 15, food: 300, battery: 80 }
+
+entity_groups:
+  - count: 20
+    id_prefix: "p"
+    start_index: 1
+    template:
+      type: ground_team
+      behavior: patrol
+      patrol_zone: "ridge_picket"
+      personnel: 4
+      battery_pct: 92
+      resources: { fuel: 90, medkit: 2, food: 80, battery: 90 }
+  - count: 6
+    id_prefix: "med"
+    start_index: 2
+    template:
+      type: vehicle
+      behavior: respond
+      patrol_zone: "evac_corridor"
+      personnel: 3
+      battery_pct: 100
+      resources: { fuel: 100, medkit: 30, food: 40, battery: 100 }
+  - count: 12
+    id_prefix: "u"
+    start_index: 1
+    template:
+      type: drone
+      behavior: patrol
+      patrol_zone: "medevac_overwatch"
+      personnel: 0
+      battery_pct: 95
+      resources: { fuel: 90, medkit: 0, food: 0, battery: 95 }
+
+timeline:
+  - at: "+00:15"
+    action: create_incident
+    params:
+      kind: medical
+      target: outpost1
+      severity: critical
+      rationale: "Multiple casualties at high altitude post — Golden Hour window active under SOP-03"
+  - at: "+00:40"
+    action: spawn_weather
+    params:
+      kind: fog
+      intensity: 0.85
+      center: [77.58, 12.98]
+      radius_km: 4.5
+      drift_kmh: 5.0
+  - at: "+01:10"
+    action: raise_alert
+    params:
+      target: "BASE_AIR_DEFENCE"
+      severity: high
+      message: "CASEVAC transit ingress verified on Sector Charlie"
+
+rules:
+  - when: unit_in_weather(med1, fog, 0.7)
+    then:
+      action: modify_speed
+      params: { unit: med1, multiplier: 0.65 }
+
+end_conditions:
+  - sim_time_elapsed

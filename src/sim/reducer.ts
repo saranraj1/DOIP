@@ -33,7 +33,9 @@ export function applyEvent(state: WorldState, e: SimEvent): WorldState {
       s.scenarioId = p.scenarioId;
       s.units = Object.fromEntries(p.units.map((u) => [u.id, { ...u }]));
       s.depots = Object.fromEntries(p.depots.map((d) => [d.id, { ...d }]));
-      s.personnel = Object.fromEntries(p.personnel.map((x) => [x.id, { ...x, history: [x.heartRate] }]));
+      s.personnel = Object.fromEntries(
+        p.personnel.map((x) => [x.id, { ...x, history: [x.heartRate] }]),
+      );
       s.zones = p.zones;
       s.incidents = {};
       s.alerts = {};
@@ -112,7 +114,12 @@ export function applyEvent(state: WorldState, e: SimEvent): WorldState {
       break;
     }
     case "incident_open": {
-      const p = e.payload as unknown as { kind: string; lat: number; lon: number; reportedBy?: string };
+      const p = e.payload as unknown as {
+        kind: string;
+        lat: number;
+        lon: number;
+        reportedBy?: string;
+      };
       const inc: Incident = {
         id: e.entityId,
         tick: e.tick,
@@ -128,7 +135,8 @@ export function applyEvent(state: WorldState, e: SimEvent): WorldState {
     }
     case "incident_close": {
       const inc = s.incidents[e.entityId];
-      if (inc) s.incidents = { ...s.incidents, [inc.id]: { ...inc, open: false, closedTick: e.tick } };
+      if (inc)
+        s.incidents = { ...s.incidents, [inc.id]: { ...inc, open: false, closedTick: e.tick } };
       break;
     }
     case "alert_raise": {
@@ -149,7 +157,11 @@ export function applyEvent(state: WorldState, e: SimEvent): WorldState {
       const p = e.payload as unknown as { alertId?: string; by?: string };
       const id = p.alertId ?? e.entityId;
       const a = s.alerts[id];
-      if (a) s.alerts = { ...s.alerts, [id]: { ...a, acked: true, ackedTick: e.tick, ackedBy: p.by ?? "operator" } };
+      if (a)
+        s.alerts = {
+          ...s.alerts,
+          [id]: { ...a, acked: true, ackedTick: e.tick, ackedBy: p.by ?? "operator" },
+        };
       break;
     }
     default:

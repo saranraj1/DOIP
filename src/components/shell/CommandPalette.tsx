@@ -14,7 +14,13 @@ import { simStore, useSim } from "@/sim/store";
 import { canOperate } from "@/lib/doip";
 import { toast } from "sonner";
 
-export function CommandPalette({ open, setOpen }: { open: boolean; setOpen: (v: boolean) => void }) {
+export function CommandPalette({
+  open,
+  setOpen,
+}: {
+  open: boolean;
+  setOpen: (v: boolean) => void;
+}) {
   const navigate = useNavigate();
   const role = useSim((s) => s.role);
   const userName = useSim((s) => s.userName);
@@ -72,7 +78,10 @@ export function CommandPalette({ open, setOpen }: { open: boolean; setOpen: (v: 
           <CommandItem value="pause run" onSelect={() => act("Run paused", () => simStore.pause())}>
             Pause run
           </CommandItem>
-          <CommandItem value="resume run" onSelect={() => act("Run resumed", () => simStore.resume())}>
+          <CommandItem
+            value="resume run"
+            onSelect={() => act("Run resumed", () => simStore.resume())}
+          >
             Resume run
           </CommandItem>
           <CommandItem value="stop run" onSelect={() => act("Run stopped", () => simStore.stop())}>

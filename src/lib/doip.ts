@@ -4,7 +4,13 @@ export const SEVERITY_META: Record<
   Severity,
   { label: string; shape: string; color: string; className: string; order: number }
 > = {
-  critical: { label: "CRITICAL", shape: "◈", color: "#F87171", className: "text-sev-critical", order: 0 },
+  critical: {
+    label: "CRITICAL",
+    shape: "◈",
+    color: "#F87171",
+    className: "text-sev-critical",
+    order: 0,
+  },
   high: { label: "HIGH", shape: "△", color: "#FB923C", className: "text-sev-high", order: 1 },
   medium: { label: "MEDIUM", shape: "■", color: "#FBBF24", className: "text-sev-medium", order: 2 },
   low: { label: "LOW", shape: "●", color: "#6E6E6E", className: "text-sev-low", order: 3 },
@@ -70,4 +76,22 @@ export function unitDesignator(
   if (!team.length) return cs;
   const present = team.filter((p) => p.fatigue < 0.85 && p.heartRate < 150).length;
   return `${cs} [${present}/${team.length}]`;
+}
+
+/**
+ * Fast deterministic rolling hash formatted as 8 hex characters.
+ * Computes deterministic fingerprint from event IDs and ticks.
+ */
+export function computeEventFingerprint(events: { id: string | number; tick: number }[]): string {
+  if (!events.length) return "00000000";
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < events.length; i++) {
+    const e = events[i]!;
+    const str = `${e.id}:${e.tick};`;
+    for (let j = 0; j < str.length; j++) {
+      hash ^= str.charCodeAt(j);
+      hash = Math.imul(hash, 0x01000193);
+    }
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0").toUpperCase();
 }

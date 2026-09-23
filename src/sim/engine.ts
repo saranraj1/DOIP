@@ -18,7 +18,16 @@ const PATROL_NAMES = ["ALPHA", "BRAVO", "CHARLIE", "DELTA", "ECHO", "FOXTROT", "
 const UAV_NAMES = ["RAVEN", "KITE", "FALCON", "OSPREY", "SHRIKE", "HARRIER", "MERLIN", "CONDOR"];
 const CONVOY_NAMES = ["MULE", "CARAVAN", "IRONHORSE", "PACKHORSE", "OXCART", "DRAY"];
 const SECTORS = ["A", "B", "C", "D"];
-const FIRST = ["A. Rao", "S. Menon", "K. Iyer", "P. Singh", "N. Das", "R. Kapoor", "V. Nair", "M. Bose"];
+const FIRST = [
+  "A. Rao",
+  "S. Menon",
+  "K. Iyer",
+  "P. Singh",
+  "N. Das",
+  "R. Kapoor",
+  "V. Nair",
+  "M. Bose",
+];
 const RANKS = ["SGT", "CPL", "LT", "PVT", "SSG"];
 
 const INCIDENT_KINDS = [
@@ -114,10 +123,30 @@ export function buildInitialWorld(seed: number, scenarioId: string): InitWorld {
   }));
 
   const zones: Zone[] = [
-    { id: "Z-1", name: "PATROL GRID NORTH", kind: "patrol", points: ring(rand, BASE_LAT + 0.03, BASE_LON - 0.02, 0.035, 7) },
-    { id: "Z-2", name: "PATROL GRID SOUTH", kind: "patrol", points: ring(rand, BASE_LAT - 0.035, BASE_LON + 0.02, 0.03, 6) },
-    { id: "Z-3", name: "RESTRICTED AIRSPACE R-12", kind: "restricted", points: ring(rand, BASE_LAT + 0.01, BASE_LON + 0.045, 0.022, 5) },
-    { id: "Z-4", name: "THREAT SECTOR C", kind: "threat", points: ring(rand, BASE_LAT - 0.02, BASE_LON - 0.045, 0.026, 6) },
+    {
+      id: "Z-1",
+      name: "PATROL GRID NORTH",
+      kind: "patrol",
+      points: ring(rand, BASE_LAT + 0.03, BASE_LON - 0.02, 0.035, 7),
+    },
+    {
+      id: "Z-2",
+      name: "PATROL GRID SOUTH",
+      kind: "patrol",
+      points: ring(rand, BASE_LAT - 0.035, BASE_LON + 0.02, 0.03, 6),
+    },
+    {
+      id: "Z-3",
+      name: "RESTRICTED AIRSPACE R-12",
+      kind: "restricted",
+      points: ring(rand, BASE_LAT + 0.01, BASE_LON + 0.045, 0.022, 5),
+    },
+    {
+      id: "Z-4",
+      name: "THREAT SECTOR C",
+      kind: "threat",
+      points: ring(rand, BASE_LAT - 0.02, BASE_LON - 0.045, 0.026, 6),
+    },
   ];
 
   return { units, depots, personnel, zones };
@@ -139,9 +168,7 @@ export class MockSimSource implements SimSource {
   private routeIdx = new Map<string, number>();
   private silence = new Map<string, number>();
 
-  private emit(
-    partials: Array<Pick<SimEvent, "type" | "severity" | "entityId" | "payload">>,
-  ) {
+  private emit(partials: Array<Pick<SimEvent, "type" | "severity" | "entityId" | "payload">>) {
     if (!partials.length) return;
     const events: SimEvent[] = partials.map((p) => ({
       id: this.nextId++,
@@ -184,18 +211,24 @@ export class MockSimSource implements SimSource {
 
   pause() {
     this.stopTimer();
-    this.emit([{ type: "system", severity: "low", entityId: "system", payload: { status: "PAUSED" } }]);
+    this.emit([
+      { type: "system", severity: "low", entityId: "system", payload: { status: "PAUSED" } },
+    ]);
   }
 
   resume() {
     if (this.timer) return;
-    this.emit([{ type: "system", severity: "low", entityId: "system", payload: { status: "RUNNING" } }]);
+    this.emit([
+      { type: "system", severity: "low", entityId: "system", payload: { status: "RUNNING" } },
+    ]);
     this.startTimer();
   }
 
   stop() {
     this.stopTimer();
-    this.emit([{ type: "system", severity: "low", entityId: "system", payload: { status: "STOPPED" } }]);
+    this.emit([
+      { type: "system", severity: "low", entityId: "system", payload: { status: "STOPPED" } },
+    ]);
   }
 
   setSpeed(speed: number) {
@@ -222,7 +255,6 @@ export class MockSimSource implements SimSource {
     }
     this.emit(events);
   }
-
 
   isRunning() {
     return this.timer !== null;
@@ -254,7 +286,12 @@ export class MockSimSource implements SimSource {
         kind: pick(rand, ["rain", "storm", "fog", "dust"]),
       };
       this.weather.push(cell);
-      out.push({ type: "weather_spawn", severity: cell.intensity > 0.7 ? "high" : "medium", entityId: cell.id, payload: { ...cell } });
+      out.push({
+        type: "weather_spawn",
+        severity: cell.intensity > 0.7 ? "high" : "medium",
+        entityId: cell.id,
+        payload: { ...cell },
+      });
     }
     this.weather = this.weather.filter((w) => {
       w.lat += between(rand, -0.0016, 0.0016);
@@ -264,7 +301,12 @@ export class MockSimSource implements SimSource {
         out.push({ type: "weather_clear", severity: "low", entityId: w.id, payload: {} });
         return false;
       }
-      out.push({ type: "weather_move", severity: "low", entityId: w.id, payload: { lat: w.lat, lon: w.lon, intensity: w.intensity } });
+      out.push({
+        type: "weather_move",
+        severity: "low",
+        entityId: w.id,
+        payload: { lat: w.lat, lon: w.lon, intensity: w.intensity },
+      });
       return true;
     });
 
@@ -274,17 +316,30 @@ export class MockSimSource implements SimSource {
       if (silentUntil > this.tick) continue;
       if (rand() < 0.004) {
         this.silence.set(u.id, this.tick + Math.round(between(rand, 180, 320)));
-        out.push({ type: "comms_loss", severity: "high", entityId: u.id, payload: { callsign: u.callsign } });
+        out.push({
+          type: "comms_loss",
+          severity: "high",
+          entityId: u.id,
+          payload: { callsign: u.callsign },
+        });
         out.push({
           type: "alert_raise",
           severity: "high",
           entityId: u.id,
-          payload: { message: `${u.callsign} comms silence detected`, alertId: `AL-${this.tick}-${u.id}` },
+          payload: {
+            message: `${u.callsign} comms silence detected`,
+            alertId: `AL-${this.tick}-${u.id}`,
+          },
         });
         continue;
       }
       if (silentUntil === this.tick) {
-        out.push({ type: "comms_restore", severity: "low", entityId: u.id, payload: { callsign: u.callsign } });
+        out.push({
+          type: "comms_restore",
+          severity: "low",
+          entityId: u.id,
+          payload: { callsign: u.callsign },
+        });
       }
 
       const idx = this.routeIdx.get(u.id) ?? 0;
@@ -331,7 +386,10 @@ export class MockSimSource implements SimSource {
             type: "alert_raise",
             severity: "critical",
             entityId: u.id,
-            payload: { message: `${u.callsign} battery critical (${u.battery.toFixed(0)}%)`, alertId: `AL-${this.tick}-BAT-${u.id}` },
+            payload: {
+              message: `${u.callsign} battery critical (${u.battery.toFixed(0)}%)`,
+              alertId: `AL-${this.tick}-BAT-${u.id}`,
+            },
           });
         }
       }
@@ -387,7 +445,8 @@ export class MockSimSource implements SimSource {
     // incidents
     if (rand() < sc.incidentRate) {
       const u = pick(rand, this.units);
-      const sev = SEVERITIES[Math.min(3, Math.floor(rand() * 4 + (sc.incidentRate > 0.1 ? 0.6 : 0)))]!;
+      const sev =
+        SEVERITIES[Math.min(3, Math.floor(rand() * 4 + (sc.incidentRate > 0.1 ? 0.6 : 0)))]!;
       const id = `INC-${this.tick}`;
       out.push({
         type: "incident_open",

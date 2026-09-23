@@ -11,6 +11,7 @@ The original DOIP sketch proposed microservices (API gateway, mission service, m
 Build one deployable FastAPI process with strict internal module boundaries (`engine/`, `mission/`, `ai/`, `session/`). Redis pub/sub for events. Docker Compose for deployment.
 
 Planned splits, and nothing before them:
+
 - Phase 4: vision service (AGPL isolation + GPU/CPU independence)
 - Phase 6: analytics workers
 - Phase 7: Redis→Kafka, Compose→k3s — only if load demands it

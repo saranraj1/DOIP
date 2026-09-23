@@ -1,0 +1,84 @@
+{
+  "total": 6,
+  "updated": "2026-09-16T10:10:00Z",
+  "clips": [
+    {
+      "id": "CLIP-SC1-OPTICAL",
+      "file": "clips/patrol_night_ir_01.mp4",
+      "channel": "CAM-01-NORTH",
+      "type": "thermal_ir",
+      "scenario": "SC-1",
+      "resolution": "1280x720",
+      "fps": 15,
+      "duration_s": 60,
+      "license": "Pexels License (Free to use)",
+      "use": "S9 Vision Review & Night Patrol detection verification",
+      "bounding_classes": ["vehicle", "person"]
+    },
+    {
+      "id": "CLIP-SC2-BORDER-EO",
+      "file": "clips/border_corridor_eo_02.mp4",
+      "channel": "CAM-02-BORDER",
+      "type": "electro_optical",
+      "scenario": "SC-2",
+      "resolution": "1280x720",
+      "fps": 15,
+      "duration_s": 60,
+      "license": "Pexels License (Free to use)",
+      "use": "SC-2 Golden Run Flagship Surveillance demo",
+      "bounding_classes": ["vehicle", "structure", "person"]
+    },
+    {
+      "id": "CLIP-SC3-AIRSPACE",
+      "file": "clips/counter_uav_flir_03.mp4",
+      "channel": "CAM-03-SKYWATCH",
+      "type": "flir",
+      "scenario": "SC-3",
+      "resolution": "1280x720",
+      "fps": 15,
+      "duration_s": 45,
+      "license": "Wikimedia Commons CC-BY-SA 4.0",
+      "use": "SOP-05 Counter-UAV engagement review",
+      "bounding_classes": ["drone", "unknown"]
+    },
+    {
+      "id": "CLIP-SC4-HIGHWAY",
+      "file": "clips/convoy_route_cctv_04.mp4",
+      "channel": "CAM-04-CONVOY",
+      "type": "cctv_optical",
+      "scenario": "SC-4",
+      "resolution": "1280x720",
+      "fps": 15,
+      "duration_s": 60,
+      "license": "Pixabay Content License",
+      "use": "SOP-04 Convoy escort highway checkpoint feed",
+      "bounding_classes": ["vehicle"]
+    },
+    {
+      "id": "CLIP-SC5-MEDEVAC",
+      "file": "clips/mountain_pass_eo_05.mp4",
+      "channel": "CAM-05-CASEVAC",
+      "type": "electro_optical",
+      "scenario": "SC-5",
+      "resolution": "1280x720",
+      "fps": 15,
+      "duration_s": 50,
+      "license": "Pexels License (Free to use)",
+      "use": "SOP-03 CASEVAC transit corridor observation",
+      "bounding_classes": ["vehicle", "person"]
+    },
+    {
+      "id": "CLIP-SC8-FLOOD",
+      "file": "clips/basin_flood_survey_06.mp4",
+      "channel": "CAM-06-HADR",
+      "type": "aerial_optical",
+      "scenario": "SC-8",
+      "resolution": "1280x720",
+      "fps": 15,
+      "duration_s": 60,
+      "license": "Pixabay Content License",
+      "use": "SOP-08 HADR flood crest and boat staging observation",
+      "bounding_classes": ["vehicle", "structure"]
+    }
+  ]
+}

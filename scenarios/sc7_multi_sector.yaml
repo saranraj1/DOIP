@@ -1,0 +1,90 @@
+name: "SC-7 Multi-Sector Escalation Exercise"
+id: "SC-7"
+area: "geo/multi_sector.geojson"
+sim_start: "2026-01-16T04:00:00"
+duration_minutes: 480
+seed: 7001
+
+entities:
+  - id: hq1
+    type: depot
+    callsign: "MAIN-OPERATIONS-HQ"
+    start: [77.56, 12.96]
+    behavior: idle
+    patrol_zone: "hq_perimeter"
+    personnel: 50
+    battery_pct: 100
+    resources: { fuel: 10000, medkit: 500, food: 3000, battery: 800 }
+  - id: d1
+    type: depot
+    callsign: "DEPOT-EAST"
+    start: [77.68, 12.94]
+    behavior: idle
+    patrol_zone: "depot_east"
+    personnel: 20
+    battery_pct: 100
+    resources: { fuel: 4000, medkit: 150, food: 1000, battery: 300 }
+
+entity_groups:
+  - count: 30
+    id_prefix: "patrol"
+    start_index: 1
+    template:
+      type: ground_team
+      behavior: patrol
+      patrol_zone: "theatre_grid"
+      personnel: 4
+      battery_pct: 95
+      resources: { fuel: 90, medkit: 3, food: 90, battery: 95 }
+  - count: 18
+    id_prefix: "uav"
+    start_index: 1
+    template:
+      type: drone
+      behavior: patrol
+      patrol_zone: "airspace_mesh"
+      personnel: 0
+      battery_pct: 90
+      resources: { fuel: 85, medkit: 0, food: 0, battery: 90 }
+  - count: 10
+    id_prefix: "convoy"
+    start_index: 1
+    template:
+      type: vehicle
+      behavior: follow_route
+      patrol_zone: "feeder_routes"
+      personnel: 2
+      battery_pct: 100
+      resources: { fuel: 500, medkit: 10, food: 250, battery: 100 }
+
+timeline:
+  - at: "+01:30"
+    action: spawn_weather
+    params:
+      kind: storm
+      intensity: 0.8
+      center: [77.62, 12.95]
+      radius_km: 10.0
+      drift_kmh: 18.0
+  - at: "+02:45"
+    action: create_incident
+    params:
+      kind: unauthorized-entry
+      target: patrol1
+      severity: high
+      rationale: "Coordinated breach attempts logged across multiple border sectors"
+  - at: "+04:00"
+    action: raise_alert
+    params:
+      target: "BASE_AIR_DEFENCE"
+      severity: critical
+      message: "Multi-sector escalation threshold reached — full War-Room sync"
+
+rules:
+  - when: random_chance(0.08)
+    then:
+      action: unit_report
+      params: { unit: patrol1, status: "nominal" }
+
+end_conditions:
+  - sim_time_elapsed

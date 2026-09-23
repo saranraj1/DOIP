@@ -18,15 +18,13 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   // Emit custom events so deeply nested route components can react
   // without prop drilling (follow-mode on S3 map, feed focus on any screen).
-  const emitFollow = () =>
-    window.dispatchEvent(new CustomEvent("doip:follow-toggle"));
-  const emitFocusFeed = () =>
-    window.dispatchEvent(new CustomEvent("doip:focus-feed"));
+  const emitFollow = () => window.dispatchEvent(new CustomEvent("doip:follow-toggle"));
+  const emitFocusFeed = () => window.dispatchEvent(new CustomEvent("doip:focus-feed"));
 
   // §18.8 global keyboard shortcuts.
   useKeyboard({
     " ": () => {
-      if (role === "analyst") return;
+      if (role === "viewer") return;
       const s = simStore.getState();
       if (s.status === "RUNNING") simStore.pause();
       else if (s.status === "PAUSED") simStore.resume();
@@ -50,7 +48,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="doip-exercise-banner shrink-0" aria-hidden>
           {Array.from({ length: 24 }).map((_, i) => (
-            <span key={i} className="px-2">EXERCISE — SYNTHETIC DATA</span>
+            <span key={i} className="px-2">
+              EXERCISE — SYNTHETIC DATA
+            </span>
           ))}
         </div>
         {/* §18.8 disconnect banner */}
@@ -65,7 +65,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           {aiOpen && <AiDrawer onClose={() => setAiOpen(false)} />}
         </div>
         <footer className="shrink-0 border-t border-border bg-surface px-2 py-1.5 text-[10px] text-muted-foreground">
-          Training &amp; simulation platform. All data is synthetic. Not for operational military use.
+          Training &amp; simulation platform. All data is synthetic. Not for operational military
+          use.
         </footer>
       </div>
       <CommandPalette open={paletteOpen} setOpen={setPaletteOpen} />

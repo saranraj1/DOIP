@@ -7,8 +7,7 @@ type Handler = (e: KeyboardEvent) => void;
 export function useKeyboard(map: Record<string, Handler>) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLElement &&
-          /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
+      if (e.target instanceof HTMLElement && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
       const handler = map[e.key];
       if (handler) {
         e.preventDefault();
@@ -17,6 +16,6 @@ export function useKeyboard(map: Record<string, Handler>) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 }

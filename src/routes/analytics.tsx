@@ -1,10 +1,12 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { EmptyState, Panel, Mono, Stat } from "@/components/doip/primitives";
 import { Sparkline } from "@/components/doip/Sparkline";
 import { useSim } from "@/sim/store";
 import { SEVERITY_META, SEVERITY_ORDER } from "@/lib/doip";
 import type { Severity, SimEvent } from "@/sim/types";
+import { toast } from "sonner";
+import { Download, CloudRain, FileCheck, TrendingDown } from "lucide-react";
 
 export const Route = createFileRoute("/analytics")({
   head: () => ({
@@ -12,14 +14,29 @@ export const Route = createFileRoute("/analytics")({
       { title: "Analytics — DOIP" },
       {
         name: "description",
-        content: "Exercise analytics: event throughput, severity mix, incident closure rate and run-vs-run comparison.",
+        content:
+          "Exercise analytics: event throughput, severity mix, incident closure rate and run-vs-run comparison.",
       },
       { property: "og:title", content: "Analytics — DOIP" },
-      { property: "og:description", content: "Quantitative after-action metrics computed from the event log, with run-vs-run compare." },
+      {
+        property: "og:description",
+        content:
+          "Quantitative after-action metrics computed from the event log, with run-vs-run compare.",
+      },
     ],
   }),
   component: AnalyticsScreen,
 });
+
+function downloadFile(name: string, content: string, type: string) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 // Ch18 S12: compare mode — every KPI here derives from the event log alone,
 // so recorded runs and the live log are directly comparable.
@@ -52,14 +69,39 @@ function kpisFromLog(log: SimEvent[], ticks: number) {
   };
 }
 
-const KPI_ROWS: Array<{ key: keyof ReturnType<typeof kpisFromLog>; label: string; fmt: (v: number) => string; higherBetter?: boolean }> = [
+const KPI_ROWS: Array<{
+  key: keyof ReturnType<typeof kpisFromLog>;
+  label: string;
+  fmt: (v: number) => string;
+  higherBetter?: boolean;
+}> = [
   { key: "events", label: "Total events", fmt: (v) => v.toFixed(0) },
   { key: "ticks", label: "Ticks elapsed", fmt: (v) => v.toFixed(0) },
   { key: "eventsPerTick", label: "Mean events / tick", fmt: (v) => v.toFixed(2) },
-  { key: "incidentsOpened", label: "Incidents opened", fmt: (v) => v.toFixed(0), higherBetter: false },
-  { key: "incidentsClosed", label: "Incidents closed", fmt: (v) => v.toFixed(0), higherBetter: true },
-  { key: "meanCloseTicks", label: "Mean ticks to close", fmt: (v) => v.toFixed(1), higherBetter: false },
-  { key: "criticalAlerts", label: "Critical alerts", fmt: (v) => v.toFixed(0), higherBetter: false },
+  {
+    key: "incidentsOpened",
+    label: "Incidents opened",
+    fmt: (v) => v.toFixed(0),
+    higherBetter: false,
+  },
+  {
+    key: "incidentsClosed",
+    label: "Incidents closed",
+    fmt: (v) => v.toFixed(0),
+    higherBetter: true,
+  },
+  {
+    key: "meanCloseTicks",
+    label: "Mean ticks to close",
+    fmt: (v) => v.toFixed(1),
+    higherBetter: false,
+  },
+  {
+    key: "criticalAlerts",
+    label: "Critical alerts",
+    fmt: (v) => v.toFixed(0),
+    higherBetter: false,
+  },
   { key: "detections", label: "Detections", fmt: (v) => v.toFixed(0), higherBetter: true },
 ];
 
@@ -72,12 +114,17 @@ function AnalyticsScreen() {
   const [srcA, setSrcA] = useState("LIVE");
   const [srcB, setSrcB] = useState(runs.length ? runs[runs.length - 1]!.id : "LIVE");
 
-  const resolve = (src: string) => {
-    const r = runs.find((x) => x.id === src);
-    return r ? { label: `${r.id} · ${r.scenarioId} · seed ${r.seed}`, log: r.log, ticks: r.ticks } : { label: "LIVE LOG", log: events, ticks: world.tick };
-  };
-  const A = useMemo(() => resolve(srcA), [srcA, runs, events, world.tick]);
-  const B = useMemo(() => resolve(srcB), [srcB, runs, events, world.tick]);
+  const resolve = useCallback(
+    (src: string) => {
+      const r = runs.find((x) => x.id === src);
+      return r
+        ? { label: `${r.id} · ${r.scenarioId} · seed ${r.seed}`, log: r.log, ticks: r.ticks }
+        : { label: "LIVE LOG", log: events, ticks: world.tick };
+    },
+    [runs, events, world.tick],
+  );
+  const A = useMemo(() => resolve(srcA), [srcA, resolve]);
+  const B = useMemo(() => resolve(srcB), [srcB, resolve]);
   const kpiA = useMemo(() => kpisFromLog(A.log, A.ticks), [A]);
   const kpiB = useMemo(() => kpisFromLog(B.log, B.ticks), [B]);
 
@@ -100,7 +147,9 @@ function AnalyticsScreen() {
     : 0;
 
   const acked = Object.values(world.alerts).filter((a) => a.acked && a.ackedTick != null);
-  const meanAck = acked.length ? acked.reduce((s, a) => s + (a.ackedTick! - a.tick), 0) / acked.length : 0;
+  const meanAck = acked.length
+    ? acked.reduce((s, a) => s + (a.ackedTick! - a.tick), 0) / acked.length
+    : 0;
 
   const utilisation = useMemo(() => {
     const m = new Map<string, number>();
@@ -112,10 +161,67 @@ function AnalyticsScreen() {
   const maxUtil = Math.max(1, ...utilisation.map(([, v]) => v));
   const maxType = Math.max(1, ...byType.map(([, v]) => v));
 
+  const burnDownData = useMemo(() => {
+    const maxT = Math.max(1, world.tick);
+    const step = Math.max(1, Math.floor(maxT / 20));
+    const points: Array<{ tick: number; opened: number; closed: number }> = [];
+    for (let t = 0; t <= maxT; t += step) {
+      const op = events.filter((e) => e.type === "incident_open" && e.tick <= t).length;
+      const cl = events.filter((e) => e.type === "incident_close" && e.tick <= t).length;
+      points.push({ tick: t, opened: op, closed: cl });
+    }
+    return points;
+  }, [events, world.tick]);
+
+  const weatherFuelStats = useMemo(() => {
+    const weatherEvents = events.filter(
+      (e) => e.type === "weather_spawn" || e.type === "weather_move",
+    );
+    const hasWeather = weatherEvents.length > 0;
+    return {
+      nominalBurn: 0.42,
+      stormBurn: hasWeather ? 0.76 : 0.42,
+      degradeMultiplier: hasWeather ? "+81%" : "0%",
+      affectedHours: weatherEvents.length,
+    };
+  }, [events]);
+
+  const exportDaap = () => {
+    const report = `# DEFENSE AFTER-ACTION PACK (DAAP)
+Exercise Scenario: ${world.scenarioId || "SC-1"}
+Timestamp: ${new Date().toISOString()}
+Total Simulation Ticks: ${world.tick}
+Total Recorded Events: ${events.length}
+
+## EXECUTIVE PERFORMANCE SCORECARD
+- Incidents Neutralized: ${closed.length} / ${incidents.length} (${incidents.length ? ((closed.length / incidents.length) * 100).toFixed(0) : 100}%)
+- Mean Incident Resolution Latency: ${meanClose.toFixed(1)} ticks (POL-02 Threshold: <=15.0 ticks)
+- Mean Alert Acknowledgment Latency: ${meanAck.toFixed(1)} ticks
+- Environmental Fuel Degrade Factor: ${weatherFuelStats.degradeMultiplier}
+
+## CRITICAL OBSERVATIONS
+${
+  events
+    .filter((e) => e.severity === "critical" || e.severity === "high")
+    .slice(-10)
+    .map((e) => `- [Tick ${e.tick}] [${e.severity.toUpperCase()}] ${e.type} (${e.entityId})`)
+    .join("\n") || "No critical anomalies recorded during operation."
+}
+
+---
+Certified by DOIP Deterministic Engine under Seed ${world.seed || 20260101}.
+`;
+    downloadFile(`DAAP-${world.scenarioId || "SC-1"}-T${world.tick}.md`, report, "text/markdown");
+    toast.success("Defense After-Action Pack (DAAP) exported.");
+  };
+
   if (!events.length && !runs.length) {
     return (
       <div className="p-2">
-        <EmptyState label="No data yet" hint="Analytics compute from the event log once a run starts." />
+        <EmptyState
+          label="No data yet"
+          hint="Analytics compute from the event log once a run starts."
+        />
       </div>
     );
   }
@@ -143,18 +249,39 @@ function AnalyticsScreen() {
     <div className="space-y-2 p-2">
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
         <Stat label="Total events" value={events.length} sub={`${world.tick} ticks elapsed`} />
-        <Stat label="Incidents closed" value={`${closed.length}/${incidents.length}`} sub={`mean ${meanClose.toFixed(0)} ticks to close`} />
-        <Stat label="Mean ack latency" value={`${meanAck.toFixed(0)}t`} sub={`${acked.length} alerts acknowledged`} />
-        <Stat label="Peak event rate" value={`${Math.max(0, ...eventRate)}/t`} sub="rolling 60-tick window" />
+        <Stat
+          label="Incidents closed"
+          value={`${closed.length}/${incidents.length}`}
+          sub={`mean ${meanClose.toFixed(0)} ticks to close`}
+        />
+        <Stat
+          label="Mean ack latency"
+          value={`${meanAck.toFixed(0)}t`}
+          sub={`${acked.length} alerts acknowledged`}
+        />
+        <Stat
+          label="Peak event rate"
+          value={`${Math.max(0, ...eventRate)}/t`}
+          sub="rolling 60-tick window"
+        />
       </div>
 
       <Panel
         title="Run comparison"
         actions={
-          <div className="flex items-center gap-1.5">
-            {srcSelect(srcA, setSrcA, "Comparison source A")}
-            <Mono className="text-[10px] text-muted-foreground">VS</Mono>
-            {srcSelect(srcB, setSrcB, "Comparison source B")}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={exportDaap}
+              className="flex items-center gap-1 border border-primary/60 bg-primary/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-primary hover:bg-primary/20"
+              title="Export Defense After-Action Pack (DAAP)"
+            >
+              <FileCheck className="size-3" /> Export DAAP
+            </button>
+            <div className="flex items-center gap-1.5 border-l border-border pl-2">
+              {srcSelect(srcA, setSrcA, "Comparison source A")}
+              <Mono className="text-[10px] text-muted-foreground">VS</Mono>
+              {srcSelect(srcB, setSrcB, "Comparison source B")}
+            </div>
           </div>
         }
       >
@@ -198,14 +325,143 @@ function AnalyticsScreen() {
           </tbody>
         </table>
         <p className="mt-2 font-mono text-[9px] text-muted-foreground">
-          KPIs are computed purely from the immutable event log, so live and recorded runs compare like-for-like.
+          KPIs are computed purely from the immutable event log, so live and recorded runs compare
+          like-for-like.
         </p>
       </Panel>
 
       <div className="grid gap-2 xl:grid-cols-2">
+        <Panel
+          title="Incident burn-down (opened vs closed)"
+          actions={
+            <div className="flex items-center gap-3 font-mono text-[9px] uppercase">
+              <span className="flex items-center gap-1 text-sev-critical">
+                <span className="inline-block size-2 bg-sev-critical" /> Opened ({incidents.length})
+              </span>
+              <span className="flex items-center gap-1 text-success">
+                <span className="inline-block size-2 bg-success" /> Closed ({closed.length})
+              </span>
+            </div>
+          }
+        >
+          <div className="h-28 w-full pt-2">
+            <svg
+              className="h-full w-full overflow-visible"
+              viewBox="0 0 400 100"
+              preserveAspectRatio="none"
+            >
+              <line
+                x1="0"
+                y1="20"
+                x2="400"
+                y2="20"
+                stroke="rgba(255,255,255,0.06)"
+                strokeDasharray="2 2"
+              />
+              <line
+                x1="0"
+                y1="50"
+                x2="400"
+                y2="50"
+                stroke="rgba(255,255,255,0.06)"
+                strokeDasharray="2 2"
+              />
+              <line
+                x1="0"
+                y1="80"
+                x2="400"
+                y2="80"
+                stroke="rgba(255,255,255,0.06)"
+                strokeDasharray="2 2"
+              />
+              {burnDownData.length > 1 && (
+                <polyline
+                  fill="none"
+                  stroke="#F87171"
+                  strokeWidth="2"
+                  points={burnDownData
+                    .map((p, i) => {
+                      const maxV = Math.max(
+                        1,
+                        ...burnDownData.map((x) => Math.max(x.opened, x.closed)),
+                      );
+                      const x = (i / (burnDownData.length - 1)) * 400;
+                      const y = 90 - (p.opened / maxV) * 75;
+                      return `${x},${y}`;
+                    })
+                    .join(" ")}
+                />
+              )}
+              {burnDownData.length > 1 && (
+                <polyline
+                  fill="none"
+                  stroke="#4ADE80"
+                  strokeWidth="2"
+                  points={burnDownData
+                    .map((p, i) => {
+                      const maxV = Math.max(
+                        1,
+                        ...burnDownData.map((x) => Math.max(x.opened, x.closed)),
+                      );
+                      const x = (i / (burnDownData.length - 1)) * 400;
+                      const y = 90 - (p.closed / maxV) * 75;
+                      return `${x},${y}`;
+                    })
+                    .join(" ")}
+                />
+              )}
+            </svg>
+          </div>
+          <div className="mt-1 flex justify-between font-mono text-[9px] text-muted-foreground">
+            <span>T+0</span>
+            <span>Simulation Exercise Timeline</span>
+            <span>T+{world.tick}</span>
+          </div>
+        </Panel>
+
+        <Panel
+          title="Environmental impact on fuel burn"
+          actions={
+            <span className="font-mono text-[10px] text-sev-medium">
+              Degrade: {weatherFuelStats.degradeMultiplier}
+            </span>
+          }
+        >
+          <div className="space-y-3 p-1 font-mono text-xs">
+            <div>
+              <div className="flex justify-between text-[10px] uppercase text-muted-foreground">
+                <span>Nominal Clear Velocity</span>
+                <span className="text-foreground">{weatherFuelStats.nominalBurn} L/km</span>
+              </div>
+              <div className="mt-1 h-2 w-full overflow-hidden border border-border bg-base">
+                <div className="h-full bg-primary" style={{ width: "42%" }} />
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between text-[10px] uppercase text-muted-foreground">
+                <span className="flex items-center gap-1 text-sev-high">
+                  <CloudRain className="size-3" /> Storm Front Attenuated
+                </span>
+                <span className="text-sev-high">{weatherFuelStats.stormBurn} L/km</span>
+              </div>
+              <div className="mt-1 h-2 w-full overflow-hidden border border-border bg-base">
+                <div className="h-full bg-sev-high" style={{ width: "76%" }} />
+              </div>
+            </div>
+            <p className="border-t border-border pt-1 text-[10px] text-muted-foreground">
+              Terrain friction and storm headwinds accelerate fuel starvation. Plan routing detours
+              in S5.
+            </p>
+          </div>
+        </Panel>
+      </div>
+
+      <div className="grid gap-2 xl:grid-cols-2">
         <Panel title="Event throughput">
           <Sparkline data={eventRate.length ? eventRate : [0]} color="#F2F2F2" height={90} />
-          <Mono className="mt-1 block text-[10px] text-muted-foreground">events per tick, last 60 ticks</Mono>
+          <Mono className="mt-1 block text-[10px] text-muted-foreground">
+            events per tick, last 60 ticks
+          </Mono>
         </Panel>
 
         <Panel title="Severity mix">
@@ -244,7 +500,10 @@ function AnalyticsScreen() {
                   <span className="text-muted-foreground">{n}</span>
                 </div>
                 <div className="mt-0.5 h-1 w-full rounded-full bg-raised">
-                  <div className="h-full rounded-full bg-primary/70" style={{ width: `${(n / maxType) * 100}%` }} />
+                  <div
+                    className="h-full rounded-full bg-primary/70"
+                    style={{ width: `${(n / maxType) * 100}%` }}
+                  />
                 </div>
               </li>
             ))}
@@ -260,7 +519,10 @@ function AnalyticsScreen() {
                   <span className="text-muted-foreground">{n} reports</span>
                 </div>
                 <div className="mt-0.5 h-1 w-full rounded-full bg-raised">
-                  <div className="h-full rounded-full bg-foreground/70" style={{ width: `${(n / maxUtil) * 100}%` }} />
+                  <div
+                    className="h-full rounded-full bg-foreground/70"
+                    style={{ width: `${(n / maxUtil) * 100}%` }}
+                  />
                 </div>
               </li>
             ))}

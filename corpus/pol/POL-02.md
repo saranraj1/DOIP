@@ -7,7 +7,7 @@ version: 1.0
 
 # POL-02 — Data Handling Policy
 
-*Simulated training policy.*
+_Simulated training policy._
 
 ## 1. Synthetic-only rule
 
@@ -23,4 +23,4 @@ Event logs are append-only and retained for the training program's review period
 
 ## 4. Exports
 
-After-action reports and analytics exports inherit this policy: synthetic content, role names rather than personal blame framing (POL-03), and the standing disclaimer — *“Training & simulation platform. All data is synthetic. Not for operational military use.”*
+After-action reports and analytics exports inherit this policy: synthetic content, role names rather than personal blame framing (POL-03), and the standing disclaimer — _“Training & simulation platform. All data is synthetic. Not for operational military use.”_

@@ -8,11 +8,11 @@ The demo pipeline renders synthetic aerial frames from engine state — license-
 
 ## Path B: sourced clips
 
-| Source | License | Allowed use |
-|---|---|---|
-| Pexels / Pixabay aerial clips | Pexels/Pixabay License (free) | Demos, docs — record per-clip in manifest |
-| Wikimedia Commons | per-file (check each) | Only clearly-licensed files; record license per clip |
-| VisDrone dataset | Academic/research ONLY | Fine-tuning demos only. NEVER in the default demo path. Restriction must stay noted here and in `THIRD_PARTY_LICENSES.md` |
+| Source                        | License                       | Allowed use                                                                                                               |
+| ----------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Pexels / Pixabay aerial clips | Pexels/Pixabay License (free) | Demos, docs — record per-clip in manifest                                                                                 |
+| Wikimedia Commons             | per-file (check each)         | Only clearly-licensed files; record license per clip                                                                      |
+| VisDrone dataset              | Academic/research ONLY        | Fine-tuning demos only. NEVER in the default demo path. Restriction must stay noted here and in `THIRD_PARTY_LICENSES.md` |
 
 Anything not in this table needs a license row + review before use.
 

@@ -6,20 +6,28 @@ import { formatSimClock, SEVERITY_META } from "@/lib/doip";
 import { useSim } from "@/sim/store";
 import { foldEvents } from "@/sim/reducer";
 import { cn } from "@/lib/utils";
-import { Play, Pause, Download } from "lucide-react";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
+import { Play, Pause, Download, FileText } from "lucide-react";
+import type { Severity } from "@/sim/types";
 
 export const Route = createFileRoute("/replay")({
   validateSearch: (s: Record<string, unknown>): { run?: string } =>
-    typeof s.run === "string" ? { run: s.run } : {},
+    typeof s["run"] === "string" ? { run: s["run"] } : {},
   head: () => ({
     meta: [
       { title: "Replay — DOIP" },
       {
         name: "description",
-        content: "Scrub any finished exercise tick by tick, rendered purely from the immutable event log.",
+        content:
+          "Scrub any finished exercise tick by tick, rendered purely from the immutable event log.",
       },
       { property: "og:title", content: "Replay — DOIP" },
-      { property: "og:description", content: "Per-run replay with event-density heatstrip, 1-8x playback and after-action export." },
+      {
+        property: "og:description",
+        content:
+          "Per-run replay with event-density heatstrip, 1-8x playback and after-action export.",
+      },
     ],
   }),
   component: ReplayScreen,
@@ -46,6 +54,7 @@ function ReplayScreen() {
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(2);
   const [selectedEvent, setSelectedEvent] = useState<number | null>(null);
+  const [aarDownloading, setAarDownloading] = useState(false);
 
   useEffect(() => {
     if (runParam) setSource(runParam);
@@ -81,7 +90,9 @@ function ReplayScreen() {
   const notable = useMemo(
     () =>
       events
-        .filter((e) => e.severity === "high" || e.severity === "critical" || e.type === "incident_open")
+        .filter(
+          (e) => e.severity === "high" || e.severity === "critical" || e.type === "incident_open",
+        )
         .slice(-200)
         .reverse(),
     [events],
@@ -92,6 +103,38 @@ function ReplayScreen() {
     const p = e?.payload as { lat?: number; lon?: number } | undefined;
     return p?.lat && p?.lon ? ([p.lat, p.lon] as [number, number]) : null;
   }, [events, selectedEvent]);
+
+  const milestones = useMemo(() => {
+    const list: Array<{ label: string; tick: number; severity: Severity; type: string }> = [];
+    const seen = new Set<string>();
+    for (const e of events) {
+      if (e.type === "incident_open" && !seen.has("incident_open")) {
+        seen.add("incident_open");
+        list.push({ label: "First Incident", tick: e.tick, severity: e.severity, type: e.type });
+      } else if (e.type === "alert_raise" && e.severity === "critical" && !seen.has("crit_alert")) {
+        seen.add("crit_alert");
+        list.push({ label: "Critical Alert", tick: e.tick, severity: "critical", type: e.type });
+      } else if (e.type === "weather_spawn" && !seen.has("weather_spawn")) {
+        seen.add("weather_spawn");
+        list.push({ label: "Storm Front", tick: e.tick, severity: "high", type: e.type });
+      }
+    }
+    return list;
+  }, [events]);
+
+  const doctrineCompliance = useMemo(() => {
+    const incidentOpens = events.filter((e) => e.type === "incident_open");
+    const incidentCloses = events.filter((e) => e.type === "incident_close");
+    if (!incidentOpens.length)
+      return { score: 100, label: "NOMINAL", detail: "No incidents triggered" };
+    const closeRatio = incidentCloses.length / incidentOpens.length;
+    const score = Math.round(closeRatio * 100);
+    return {
+      score,
+      label: score >= 80 ? "SOP-01 / POL-02 COMPLIANT" : "NON-CONFORMING AUDIT",
+      detail: `${incidentCloses.length}/${incidentOpens.length} incidents neutralized`,
+    };
+  }, [events]);
 
   const exportAar = () => {
     const bySeverity: Record<string, number> = {};
@@ -112,10 +155,36 @@ function ReplayScreen() {
     });
   };
 
+  // P2-4: Backend-generated Markdown AAR for saved runs
+  const downloadMarkdownAar = async () => {
+    if (source === "LIVE") {
+      toast.warning("Select a saved run to export a backend AAR.");
+      return;
+    }
+    setAarDownloading(true);
+    const res = await api.downloadAar(source);
+    setAarDownloading(false);
+    if (!res) {
+      toast.error("AAR export failed — backend offline.");
+      return;
+    }
+    const blob = new Blob([res.report], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `doip-${source.toLowerCase()}-aar.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("AAR downloaded.");
+  };
+
   if (!events.length) {
     return (
       <div className="p-2">
-        <EmptyState label="No event log" hint="Run a scenario first — replay renders entirely from the log." />
+        <EmptyState
+          label="No event log"
+          hint="Run a scenario first — replay renders entirely from the log."
+        />
       </div>
     );
   }
@@ -157,6 +226,28 @@ function ReplayScreen() {
         </Panel>
 
         <Panel title="Timeline">
+          {milestones.length > 0 && (
+            <div className="mb-2 flex flex-wrap items-center gap-1.5">
+              <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
+                Milestones:
+              </span>
+              {milestones.map((m) => (
+                <button
+                  key={m.label}
+                  onClick={() => {
+                    setTick(m.tick);
+                    setPlaying(false);
+                    toast.info(`Scrubbed to ${m.label} (T+${m.tick})`);
+                  }}
+                  className="flex items-center gap-1 border border-border bg-base px-1.5 py-0.5 font-mono text-[9px] hover:border-primary/60"
+                >
+                  <SeverityTag severity={m.severity} showLabel={false} />
+                  <span>{m.label}</span>
+                  <span className="text-muted-foreground">T+{m.tick}</span>
+                </button>
+              ))}
+            </div>
+          )}
           <div className="flex h-8 items-end gap-px">
             {density.map((d, i) => (
               <div
@@ -193,7 +284,9 @@ function ReplayScreen() {
                 onClick={() => setSpeed(s)}
                 className={cn(
                   "h-8 w-10  border font-mono text-xs",
-                  speed === s ? "border-primary/60 bg-raised text-primary" : "border-border hover:bg-raised doip-btn-primary",
+                  speed === s
+                    ? "border-primary/60 bg-raised text-primary"
+                    : "border-border hover:bg-raised doip-btn-primary",
                 )}
               >
                 {s}x
@@ -204,9 +297,57 @@ function ReplayScreen() {
               className="flex items-center gap-1.5 border border-border px-2 py-1.5 font-mono text-[10px] uppercase tracking-widest hover:bg-raised"
               title="Export an after-action summary of this log as JSON"
             >
-              <Download className="size-3" /> Export AAR
+              <Download className="size-3" /> Export JSON
             </button>
+            {source !== "LIVE" && (
+              <button
+                id="export-aar-md-btn"
+                onClick={downloadMarkdownAar}
+                disabled={aarDownloading}
+                className="flex items-center gap-1.5 border border-border px-2 py-1.5 font-mono text-[10px] uppercase tracking-widest hover:bg-raised disabled:opacity-50"
+                title="Download a structured Markdown After-Action Report from the backend"
+              >
+                <FileText className="size-3" />
+                {aarDownloading ? "Generating…" : "AAR (MD)"}
+              </button>
+            )}
             <Mono className="ml-auto text-xs">{formatSimClock(tick)}</Mono>
+          </div>
+        </Panel>
+
+        <Panel
+          title={`Synchronized telemetry · T+${tick}`}
+          actions={
+            <span
+              className={cn(
+                "font-mono text-[10px] font-bold uppercase",
+                doctrineCompliance.score >= 80 ? "text-success" : "text-sev-medium",
+              )}
+            >
+              {doctrineCompliance.label} ({doctrineCompliance.score}%)
+            </span>
+          }
+        >
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {Object.values(snapshot.units)
+              .slice(0, 4)
+              .map((u) => (
+                <div key={u.id} className="border border-border p-1.5 font-mono text-[10px]">
+                  <div className="flex justify-between font-bold text-foreground">
+                    <span>{u.callsign}</span>
+                    <span className={cn(u.fuel < 30 ? "text-sev-critical" : "text-primary")}>
+                      {u.fuel.toFixed(0)}%
+                    </span>
+                  </div>
+                  <div className="mt-1 flex justify-between text-muted-foreground">
+                    <span>{u.speedKph.toFixed(0)} km/h</span>
+                    <span className="uppercase">{u.status}</span>
+                  </div>
+                </div>
+              ))}
+            {!Object.keys(snapshot.units).length && (
+              <EmptyState label="No telemetry" hint="Scrub to a tick with active units." />
+            )}
           </div>
         </Panel>
       </div>

@@ -3,23 +3,17 @@ import { cn } from "@/lib/utils";
 import { X } from "lucide-react";
 
 const SHORTCUTS: Array<{ key: string; label: string; scope?: string }> = [
-  { key: "Space",  label: "Pause / Resume run",      scope: "planner+" },
-  { key: "F",      label: "Toggle follow-mode on map" },
-  { key: "E",      label: "Focus event feed" },
-  { key: "1",      label: "Toggle Units layer",        scope: "S3 map" },
-  { key: "2",      label: "Toggle Incidents layer",    scope: "S3 map" },
-  { key: "3",      label: "Toggle Weather layer",      scope: "S3 map" },
-  { key: "4",      label: "Toggle Zones layer",        scope: "S3 map" },
-  { key: "?",      label: "Show / hide this sheet" },
+  { key: "Space", label: "Pause / Resume run", scope: "planner+" },
+  { key: "F", label: "Toggle follow-mode on map" },
+  { key: "E", label: "Focus event feed" },
+  { key: "1", label: "Toggle Units layer", scope: "S3 map" },
+  { key: "2", label: "Toggle Incidents layer", scope: "S3 map" },
+  { key: "3", label: "Toggle Weather layer", scope: "S3 map" },
+  { key: "4", label: "Toggle Zones layer", scope: "S3 map" },
+  { key: "?", label: "Show / hide this sheet" },
 ];
 
-export function ShortcutSheet({
-  open,
-  onClose,
-}: {
-  open: boolean;
-  onClose: () => void;
-}) {
+export function ShortcutSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   if (!open) return null;
 
   return (
@@ -57,9 +51,7 @@ export function ShortcutSheet({
               >
                 {key}
               </kbd>
-              <span className="flex-1 font-mono text-[11px] text-muted-foreground">
-                {label}
-              </span>
+              <span className="flex-1 font-mono text-[11px] text-muted-foreground">{label}</span>
               {scope && (
                 <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/60">
                   {scope}

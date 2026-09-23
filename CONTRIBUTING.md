@@ -15,13 +15,13 @@
 
 ## Non-negotiable rules
 
-| Rule | Why |
-|---|---|
+| Rule                                                                                     | Why                                 |
+| ---------------------------------------------------------------------------------------- | ----------------------------------- |
 | One seeded RNG, injected — never `random.random()` or `time.time()` inside the tick loop | Deterministic replay is the product |
-| Events are append-only; never mutate or delete emitted events | Replay + audit integrity |
-| AI output enters the engine only through the DSL validation gate | Ch. 13 golden rule |
-| New dependencies require a `THIRD_PARTY_LICENSES.md` row in the same PR | CI-enforced |
-| No new infrastructure (Kafka, K8s) before Phase 7 | Phase discipline |
+| Events are append-only; never mutate or delete emitted events                            | Replay + audit integrity            |
+| AI output enters the engine only through the DSL validation gate                         | Ch. 13 golden rule                  |
+| New dependencies require a `THIRD_PARTY_LICENSES.md` row in the same PR                  | CI-enforced                         |
+| No new infrastructure (Kafka, K8s) before Phase 7                                        | Phase discipline                    |
 
 ## Commit style
 

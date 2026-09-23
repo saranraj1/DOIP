@@ -14,11 +14,13 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AdvisorRouteImport } from './routes/advisor'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as DoctrineRouteImport } from './routes/doctrine'
 import { Route as LogisticsRouteImport } from './routes/logistics'
 import { Route as PersonnelRouteImport } from './routes/personnel'
 import { Route as PlannerRouteImport } from './routes/planner'
 import { Route as ReplayRouteImport } from './routes/replay'
 import { Route as RunRouteImport } from './routes/run'
+import { Route as ScenarioEditorRouteImport } from './routes/scenario-editor'
 import { Route as SitrepRouteImport } from './routes/sitrep'
 import { Route as VisionRouteImport } from './routes/vision'
 import { Route as WarroomRouteImport } from './routes/warroom'
@@ -49,6 +51,11 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DoctrineRoute = DoctrineRouteImport.update({
+  id: '/doctrine',
+  path: '/doctrine',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LogisticsRoute = LogisticsRouteImport.update({
   id: '/logistics',
   path: '/logistics',
@@ -72,6 +79,11 @@ const ReplayRoute = ReplayRouteImport.update({
 const RunRoute = RunRouteImport.update({
   id: '/run',
   path: '/run',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScenarioEditorRoute = ScenarioEditorRouteImport.update({
+  id: '/scenario-editor',
+  path: '/scenario-editor',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SitrepRoute = SitrepRouteImport.update({
@@ -101,11 +113,13 @@ export interface FileRoutesByFullPath {
   '/advisor': typeof AdvisorRoute
   '/analytics': typeof AnalyticsRoute
   '/dashboard': typeof DashboardRoute
+  '/doctrine': typeof DoctrineRoute
   '/logistics': typeof LogisticsRoute
   '/personnel': typeof PersonnelRoute
   '/planner': typeof PlannerRoute
   '/replay': typeof ReplayRoute
   '/run': typeof RunRoute
+  '/scenario-editor': typeof ScenarioEditorRoute
   '/sitrep': typeof SitrepRoute
   '/vision': typeof VisionRoute
   '/warroom': typeof WarroomRoute
@@ -117,11 +131,13 @@ export interface FileRoutesByTo {
   '/advisor': typeof AdvisorRoute
   '/analytics': typeof AnalyticsRoute
   '/dashboard': typeof DashboardRoute
+  '/doctrine': typeof DoctrineRoute
   '/logistics': typeof LogisticsRoute
   '/personnel': typeof PersonnelRoute
   '/planner': typeof PlannerRoute
   '/replay': typeof ReplayRoute
   '/run': typeof RunRoute
+  '/scenario-editor': typeof ScenarioEditorRoute
   '/sitrep': typeof SitrepRoute
   '/vision': typeof VisionRoute
   '/warroom': typeof WarroomRoute
@@ -134,11 +150,13 @@ export interface FileRoutesById {
   '/advisor': typeof AdvisorRoute
   '/analytics': typeof AnalyticsRoute
   '/dashboard': typeof DashboardRoute
+  '/doctrine': typeof DoctrineRoute
   '/logistics': typeof LogisticsRoute
   '/personnel': typeof PersonnelRoute
   '/planner': typeof PlannerRoute
   '/replay': typeof ReplayRoute
   '/run': typeof RunRoute
+  '/scenario-editor': typeof ScenarioEditorRoute
   '/sitrep': typeof SitrepRoute
   '/vision': typeof VisionRoute
   '/warroom': typeof WarroomRoute
@@ -152,11 +170,13 @@ export interface FileRouteTypes {
     | '/advisor'
     | '/analytics'
     | '/dashboard'
+    | '/doctrine'
     | '/logistics'
     | '/personnel'
     | '/planner'
     | '/replay'
     | '/run'
+    | '/scenario-editor'
     | '/sitrep'
     | '/vision'
     | '/warroom'
@@ -168,11 +188,13 @@ export interface FileRouteTypes {
     | '/advisor'
     | '/analytics'
     | '/dashboard'
+    | '/doctrine'
     | '/logistics'
     | '/personnel'
     | '/planner'
     | '/replay'
     | '/run'
+    | '/scenario-editor'
     | '/sitrep'
     | '/vision'
     | '/warroom'
@@ -184,11 +206,13 @@ export interface FileRouteTypes {
     | '/advisor'
     | '/analytics'
     | '/dashboard'
+    | '/doctrine'
     | '/logistics'
     | '/personnel'
     | '/planner'
     | '/replay'
     | '/run'
+    | '/scenario-editor'
     | '/sitrep'
     | '/vision'
     | '/warroom'
@@ -201,11 +225,13 @@ export interface RootRouteChildren {
   AdvisorRoute: typeof AdvisorRoute
   AnalyticsRoute: typeof AnalyticsRoute
   DashboardRoute: typeof DashboardRoute
+  DoctrineRoute: typeof DoctrineRoute
   LogisticsRoute: typeof LogisticsRoute
   PersonnelRoute: typeof PersonnelRoute
   PlannerRoute: typeof PlannerRoute
   ReplayRoute: typeof ReplayRoute
   RunRoute: typeof RunRoute
+  ScenarioEditorRoute: typeof ScenarioEditorRoute
   SitrepRoute: typeof SitrepRoute
   VisionRoute: typeof VisionRoute
   WarroomRoute: typeof WarroomRoute
@@ -249,6 +275,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/doctrine': {
+      id: '/doctrine'
+      path: '/doctrine'
+      fullPath: '/doctrine'
+      preLoaderRoute: typeof DoctrineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/logistics': {
       id: '/logistics'
       path: '/logistics'
@@ -282,6 +315,13 @@ declare module '@tanstack/react-router' {
       path: '/run'
       fullPath: '/run'
       preLoaderRoute: typeof RunRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scenario-editor': {
+      id: '/scenario-editor'
+      path: '/scenario-editor'
+      fullPath: '/scenario-editor'
+      preLoaderRoute: typeof ScenarioEditorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sitrep': {
@@ -321,11 +361,13 @@ const rootRouteChildren: RootRouteChildren = {
   AdvisorRoute: AdvisorRoute,
   AnalyticsRoute: AnalyticsRoute,
   DashboardRoute: DashboardRoute,
+  DoctrineRoute: DoctrineRoute,
   LogisticsRoute: LogisticsRoute,
   PersonnelRoute: PersonnelRoute,
   PlannerRoute: PlannerRoute,
   ReplayRoute: ReplayRoute,
   RunRoute: RunRoute,
+  ScenarioEditorRoute: ScenarioEditorRoute,
   SitrepRoute: SitrepRoute,
   VisionRoute: VisionRoute,
   WarroomRoute: WarroomRoute,

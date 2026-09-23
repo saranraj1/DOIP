@@ -30,6 +30,7 @@ export interface SimStoreState {
   userName: string;
   eventRate: number[];
   runs: RunRecord[];
+  snapshot: { tick: number; world: WorldState; events: SimEvent[] } | null;
 }
 
 const initial: SimStoreState = {
@@ -43,6 +44,7 @@ const initial: SimStoreState = {
   userName: "",
   eventRate: [],
   runs: [],
+  snapshot: null,
 };
 
 class SimStore {
@@ -99,7 +101,9 @@ class SimStore {
     } else {
       this.tickCount += batch.length;
     }
-    const statusEvent = batch.find((e) => e.type === "system" && (e.payload as { status?: string }).status);
+    const statusEvent = batch.find(
+      (e) => e.type === "system" && (e.payload as { status?: string }).status,
+    );
     const status = statusEvent
       ? ((statusEvent.payload as { status: string }).status as RunStatus)
       : this.state.status;
@@ -176,7 +180,15 @@ class SimStore {
         : this.state.runs;
     this.lastTick = 0;
     this.tickCount = 0;
-    this.set({ events: [], world: emptyWorld(), eventRate: [], seed, scenarioId, status: "RUNNING", runs });
+    this.set({
+      events: [],
+      world: emptyWorld(),
+      eventRate: [],
+      seed,
+      scenarioId,
+      status: "RUNNING",
+      runs,
+    });
     activeSource.start({ seed, scenarioId });
   }
 
@@ -232,6 +244,26 @@ class SimStore {
 
   injectRaw(events: Omit<SimEvent, "id" | "tick" | "simTime">[]) {
     activeSource.inject(events);
+  }
+
+  saveSnapshot() {
+    if (!this.state.world.tick) return;
+    this.set({
+      snapshot: {
+        tick: this.state.world.tick,
+        world: JSON.parse(JSON.stringify(this.state.world)) as WorldState,
+        events: [...this.state.events],
+      },
+    });
+  }
+
+  restoreSnapshot() {
+    if (!this.state.snapshot) return;
+    const { world, events } = this.state.snapshot;
+    this.set({
+      world: JSON.parse(JSON.stringify(world)) as WorldState,
+      events: [...events],
+    });
   }
 }
 

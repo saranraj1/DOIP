@@ -38,7 +38,13 @@ export function Sparkline({
       role="img"
       aria-label="trend sparkline"
     >
-      <polyline points={pts} fill="none" stroke={color} strokeWidth={1.2} vectorEffect="non-scaling-stroke" />
+      <polyline
+        points={pts}
+        fill="none"
+        stroke={color}
+        strokeWidth={1.2}
+        vectorEffect="non-scaling-stroke"
+      />
     </svg>
   );
 }

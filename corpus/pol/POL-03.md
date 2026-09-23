@@ -7,7 +7,7 @@ version: 1.0
 
 # POL-03 — After-Action Report Template
 
-*Simulated training policy. This template is the required structure for every exercise AAR; the aar-summarizer prompt follows it verbatim.*
+_Simulated training policy. This template is the required structure for every exercise AAR; the aar-summarizer prompt follows it verbatim._
 
 ## Required sections
 

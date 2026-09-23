@@ -37,9 +37,9 @@ make lint
 
 ## Common problems
 
-| Symptom | Cause / fix |
-|---|---|
-| Golden test fails after your change | You broke determinism. Read `docs/golden-run.md`. Do NOT re-freeze the fixture. |
-| Map tiles blank | OSM tile fetch blocked offline — use the bundled tile cache (`make tiles`) |
-| LLM endpoints time out | Ollama not running, or model not pulled; AI features degrade gracefully — the platform runs without them |
-| `license-check` CI failure | New dependency missing from `THIRD_PARTY_LICENSES.md` |
+| Symptom                             | Cause / fix                                                                                              |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Golden test fails after your change | You broke determinism. Read `docs/golden-run.md`. Do NOT re-freeze the fixture.                          |
+| Map tiles blank                     | OSM tile fetch blocked offline — use the bundled tile cache (`make tiles`)                               |
+| LLM endpoints time out              | Ollama not running, or model not pulled; AI features degrade gracefully — the platform runs without them |
+| `license-check` CI failure          | New dependency missing from `THIRD_PARTY_LICENSES.md`                                                    |

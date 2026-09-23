@@ -1,13 +1,23 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { EmptyState, Panel, Stat, Mono } from "@/components/doip/primitives";
 import { Sparkline } from "@/components/doip/Sparkline";
 import { SCENARIOS } from "@/sim/scenarios";
 import { simStore, useSim } from "@/sim/store";
-import { canOperate } from "@/lib/doip";
+import { canOperate, computeEventFingerprint } from "@/lib/doip";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { Play, Pause, Square, RotateCcw, Copy, History, Download } from "lucide-react";
+import {
+  Play,
+  Pause,
+  Square,
+  RotateCcw,
+  Copy,
+  History,
+  Download,
+  BookmarkPlus,
+  Zap,
+} from "lucide-react";
 
 export const Route = createFileRoute("/run")({
   head: () => ({
@@ -15,12 +25,14 @@ export const Route = createFileRoute("/run")({
       { title: "Run Control — DOIP" },
       {
         name: "description",
-        content: "Start, pause and replay deterministic training scenarios with seed control and speed 1-8x.",
+        content:
+          "Start, pause and replay deterministic training scenarios with seed control and speed 1-8x.",
       },
       { property: "og:title", content: "Run Control — DOIP" },
       {
         property: "og:description",
-        content: "Deterministic scenario control: seed, speed, run history and clone-with-same-seed.",
+        content:
+          "Deterministic scenario control: seed, speed, run history and clone-with-same-seed.",
       },
     ],
   }),
@@ -44,9 +56,13 @@ function RunControlScreen() {
   const seed = useSim((s) => s.seed);
   const scenarioId = useSim((s) => s.scenarioId);
   const rate = useSim((s) => s.eventRate);
-  const eventCount = useSim((s) => s.events.length);
+  const events = useSim((s) => s.events);
+  const eventCount = events.length;
+  const snapshot = useSim((s) => s.snapshot);
   const role = useSim((s) => s.role);
   const runs = useSim((s) => s.runs);
+
+  const fingerprint = useMemo(() => computeEventFingerprint(events), [events]);
 
   const [seedInput, setSeedInput] = useState(String(seed));
   const [picked, setPicked] = useState(scenarioId);
@@ -72,7 +88,9 @@ function RunControlScreen() {
                   onClick={() => setPicked(sc.id)}
                   className={cn(
                     "h-full w-full  border p-2 text-left transition-colors",
-                    picked === sc.id ? "border-primary/60 bg-raised" : "border-border hover:bg-raised doip-btn-primary",
+                    picked === sc.id
+                      ? "border-primary/60 bg-raised"
+                      : "border-border hover:bg-raised doip-btn-primary",
                   )}
                 >
                   <div className="flex items-center justify-between">
@@ -149,7 +167,9 @@ function RunControlScreen() {
                   onClick={guard(() => simStore.setSpeed(s), `Speed set to ${s}x`)}
                   className={cn(
                     "h-8 w-10  border font-mono text-xs",
-                    speed === s ? "border-primary/60 bg-raised text-primary" : "border-border hover:bg-raised doip-btn-primary",
+                    speed === s
+                      ? "border-primary/60 bg-raised text-primary"
+                      : "border-border hover:bg-raised doip-btn-primary",
                   )}
                 >
                   {s}x
@@ -157,6 +177,38 @@ function RunControlScreen() {
               ))}
             </div>
           </div>
+          <div className="mt-3 border-t border-border pt-2">
+            <div className="flex items-center justify-between">
+              <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                State Checkpoint (Snapshot)
+              </span>
+              {snapshot && (
+                <span className="font-mono text-[10px] text-primary">
+                  Saved at T+{snapshot.tick} ({snapshot.events.length} evts)
+                </span>
+              )}
+            </div>
+            <div className="mt-1.5 flex gap-2">
+              <button
+                onClick={guard(() => simStore.saveSnapshot(), `Checkpoint saved at tick ${tick}`)}
+                disabled={!tick}
+                className="flex items-center gap-1.5 border border-border px-2 py-1 font-mono text-xs uppercase tracking-widest hover:bg-raised disabled:opacity-40"
+              >
+                <BookmarkPlus className="size-3.5" /> Save Checkpoint (T+{tick})
+              </button>
+              <button
+                onClick={guard(
+                  () => simStore.restoreSnapshot(),
+                  `Checkpoint restored to tick ${snapshot?.tick}`,
+                )}
+                disabled={!snapshot}
+                className="flex items-center gap-1.5 border border-primary/60 bg-primary/10 px-2 py-1 font-mono text-xs uppercase tracking-widest text-primary hover:bg-primary/20 disabled:opacity-40"
+              >
+                <RotateCcw className="size-3.5" /> Restore Checkpoint
+              </button>
+            </div>
+          </div>
+
           {!allowed && (
             <p className="mt-2 font-mono text-[10px] text-sev-medium">
               ■ Viewer role is read-only — run controls are disabled.
@@ -164,9 +216,76 @@ function RunControlScreen() {
           )}
         </Panel>
 
+        <Panel title="Defensive DSL inject console">
+          <div className="space-y-2">
+            <p className="text-[11px] text-muted-foreground">
+              Inject calibrated tactical injects into the deterministic event loop. Defensive
+              operations only.
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                onClick={guard(() => {
+                  simStore.injectRaw([
+                    {
+                      type: "weather_spawn",
+                      severity: "high",
+                      entityId: "weather-storm-beta",
+                      payload: {
+                        kind: "storm",
+                        intensity: 0.85,
+                        lat: 28.61,
+                        lon: 77.21,
+                        radiusKm: 18,
+                      },
+                    },
+                  ]);
+                }, "Injected: Severe Weather Front (Intensity 0.85)")}
+                className="flex items-center gap-1 border border-border bg-base px-2 py-1 font-mono text-[10px] uppercase tracking-wider hover:border-primary/60"
+              >
+                <Zap className="size-3 text-sev-high" /> + Severe Storm Cell
+              </button>
+              <button
+                onClick={guard(() => {
+                  simStore.injectRaw([
+                    {
+                      type: "alert_raise",
+                      severity: "critical",
+                      entityId: "UN-01",
+                      payload: {
+                        message: "Tactical comms degrade below threshold",
+                        entityId: "UN-01",
+                      },
+                    },
+                  ]);
+                }, "Injected: Critical Comms Alert UN-01")}
+                className="flex items-center gap-1 border border-border bg-base px-2 py-1 font-mono text-[10px] uppercase tracking-wider hover:border-primary/60"
+              >
+                <Zap className="size-3 text-sev-critical" /> + C2 Comms Drop
+              </button>
+              <button
+                onClick={guard(() => {
+                  simStore.injectRaw([
+                    {
+                      type: "incident_open",
+                      severity: "medium",
+                      entityId: "UN-02",
+                      payload: { kind: "fuel_leak", lat: 28.58, lon: 77.19 },
+                    },
+                  ]);
+                }, "Injected: Fuel Anomaly Incident")}
+                className="flex items-center gap-1 border border-border bg-base px-2 py-1 font-mono text-[10px] uppercase tracking-wider hover:border-primary/60"
+              >
+                <Zap className="size-3 text-sev-medium" /> + Fuel Degrade
+              </button>
+            </div>
+          </div>
+        </Panel>
+
         <Panel
           title="Run history"
-          actions={<Mono className="text-[10px] text-muted-foreground">LAST {runs.length} / 8</Mono>}
+          actions={
+            <Mono className="text-[10px] text-muted-foreground">LAST {runs.length} / 8</Mono>
+          }
         >
           {!runs.length ? (
             <EmptyState
@@ -189,14 +308,11 @@ function RunControlScreen() {
                     </Mono>
                     <div className="ml-auto flex gap-1">
                       <button
-                        onClick={guard(
-                          () => {
-                            setSeedInput(String(r.seed));
-                            setPicked(r.scenarioId);
-                            simStore.cloneRun(r);
-                          },
-                          `Cloned ${r.id} · ${r.scenarioId} · seed ${r.seed}`,
-                        )}
+                        onClick={guard(() => {
+                          setSeedInput(String(r.seed));
+                          setPicked(r.scenarioId);
+                          simStore.cloneRun(r);
+                        }, `Cloned ${r.id} · ${r.scenarioId} · seed ${r.seed}`)}
                         className="flex items-center gap-1 border border-border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-widest hover:bg-raised"
                         title="Re-run with the same scenario and seed — reproduces the run event-for-event"
                       >
@@ -239,6 +355,11 @@ function RunControlScreen() {
           <Stat label="Tick" value={tick} />
           <Stat label="Seed" value={<Mono>{seed}</Mono>} />
           <Stat label="Events" value={eventCount} />
+          <Stat
+            label="Hash FNV-1a"
+            value={<Mono className="text-xs font-bold text-primary">{fingerprint}</Mono>}
+          />
+          <Stat label="Checkpoint" value={snapshot ? <Mono>T+{snapshot.tick}</Mono> : "None"} />
         </div>
         <Panel title="Event rate (events / tick)">
           <Sparkline data={rate} height={60} />
@@ -246,14 +367,20 @@ function RunControlScreen() {
             last {rate.length} ticks · peak {rate.length ? Math.max(...rate) : 0}
           </div>
         </Panel>
-        <Panel title="Determinism">
-          <p className="text-xs text-muted-foreground">
-            The tick engine is a seeded mulberry32 PRNG. Re-running{" "}
-            <Mono>
-              {picked} / {seedInput}
-            </Mono>{" "}
-            reproduces this run event-for-event. Clone any recorded run to prove it.
-          </p>
+        <Panel title="Determinism & Integrity">
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between border-b border-border pb-1 font-mono text-xs">
+              <span className="text-muted-foreground">Rolling Hash</span>
+              <span className="font-bold text-primary">{fingerprint}</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              The tick engine is a seeded mulberry32 PRNG. Re-running{" "}
+              <Mono>
+                {picked} / {seedInput}
+              </Mono>{" "}
+              reproduces this run event-for-event with byte-identical telemetry and golden hashes.
+            </p>
+          </div>
         </Panel>
       </div>
     </div>

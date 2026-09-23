@@ -1,0 +1,92 @@
+name: "SC-1 Night Patrol Baseline"
+id: "SC-1"
+area: "geo/ops_area.geojson"
+sim_start: "2026-01-10T22:00:00"
+duration_minutes: 120
+seed: 42
+
+entities:
+  - id: g1
+    type: ground_team
+    callsign: "ALPHA-1"
+    start: [77.52, 12.97]
+    behavior: patrol
+    patrol_zone: "zone_a"
+    personnel: 4
+    battery_pct: 100
+    resources: { fuel: 100, medkit: 4, food: 100, battery: 100 }
+  - id: g2
+    type: ground_team
+    callsign: "ALPHA-2"
+    start: [77.53, 12.98]
+    behavior: patrol
+    patrol_zone: "zone_a"
+    personnel: 4
+    battery_pct: 100
+    resources: { fuel: 100, medkit: 4, food: 100, battery: 100 }
+  - id: u1
+    type: drone
+    callsign: "RAVEN-1"
+    start: [77.55, 12.96]
+    behavior: patrol
+    patrol_zone: "air_corridor_1"
+    personnel: 0
+    battery_pct: 95
+    resources: { fuel: 90, medkit: 0, food: 0, battery: 95 }
+  - id: d1
+    type: depot
+    callsign: "DEPOT-NORTH"
+    start: [77.54, 12.99]
+    behavior: idle
+    patrol_zone: "perimeter"
+    personnel: 12
+    battery_pct: 100
+    resources: { fuel: 3500, medkit: 100, food: 600, battery: 180 }
+
+entity_groups:
+  - count: 8
+    id_prefix: "g"
+    start_index: 3
+    template:
+      type: ground_team
+      behavior: patrol
+      patrol_zone: "zone_b"
+      personnel: 3
+      battery_pct: 98
+      resources: { fuel: 95, medkit: 2, food: 95, battery: 98 }
+
+timeline:
+  - at: "+00:30"
+    action: spawn_weather
+    params:
+      kind: storm
+      intensity: 0.65
+      center: [77.55, 12.99]
+      radius_km: 4.0
+      drift_kmh: 12.0
+  - at: "+00:45"
+    action: create_incident
+    params:
+      kind: perimeter-breach
+      target: g1
+      severity: medium
+      rationale: "Unidentified foot motion near northern perimeter grid"
+  - at: "+01:15"
+    action: raise_alert
+    params:
+      target: "BASE_AIR_DEFENCE"
+      severity: low
+      message: "Scheduled comms check window verified"
+
+rules:
+  - when: unit_in_weather(g1, storm, 0.5)
+    then:
+      action: modify_speed
+      params: { unit: g1, multiplier: 0.6 }
+  - when: random_chance(0.05)
+    then:
+      action: unit_report
+      params: { unit: g2, status: "nominal" }
+
+end_conditions:
+  - sim_time_elapsed

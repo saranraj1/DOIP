@@ -7,7 +7,7 @@ version: 1.0
 
 # SOP-05 — Counter-UAS Response
 
-*Simulated training document. Not real doctrine.*
+_Simulated training document. Not real doctrine._
 
 ## 1. Detection and classification
 

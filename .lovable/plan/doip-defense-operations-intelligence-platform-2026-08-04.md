@@ -5,6 +5,7 @@ A dark command-center web app for military training & simulation, fully frontend
 ## Build order
 
 **Phase 1 — foundation (first delivery)**
+
 - Design tokens + app shell: top status bar (sim clock, RUNNING/PAUSED/REPLAY, tick rate, unacked alert badge, role), collapsible left nav, synthetic-data footer disclaimer.
 - Mock simulation engine + event log + derived state store.
 - S1 Login (role picker), S3 Live Map (home), S4 Run Control.

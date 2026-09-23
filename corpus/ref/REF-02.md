@@ -7,15 +7,15 @@ version: 1.0
 
 # REF-02 — Severity Classification Guide
 
-*Simulated training reference.*
+_Simulated training reference._
 
 ## Severity levels
 
-| Level | Definition | UI treatment | Examples |
-|---|---|---|---|
-| **Low** | Routine, informational | feed + ticker only | position report, scheduled resupply |
-| **Medium** | Deviation needing awareness | feed + map badge | stage-2 comms loss, weather cell entering sector, stock below 40% |
-| **High** | Requires operator action | toast + badge + map ping | contact report (initial), confirmed perimeter event, stock below 30%, stage-3 comms loss |
+| Level        | Definition                  | UI treatment                                 | Examples                                                                                        |
+| ------------ | --------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| **Low**      | Routine, informational      | feed + ticker only                           | position report, scheduled resupply                                                             |
+| **Medium**   | Deviation needing awareness | feed + map badge                             | stage-2 comms loss, weather cell entering sector, stock below 40%                               |
+| **High**     | Requires operator action    | toast + badge + map ping                     | contact report (initial), confirmed perimeter event, stock below 30%, stage-3 comms loss        |
 | **Critical** | Immediate command attention | toast + commander notify + persistent banner | casualty with critical vitals, hostile-behavior air track, confirmed breach, stage-4 comms loss |
 
 ## Classification rules
@@ -27,8 +27,8 @@ version: 1.0
 
 ## Medical vitals bands
 
-| Band | Heart rate | Fatigue index | Action |
-|---|---|---|---|
-| Normal | 60–100 | < 0.6 | none |
-| Degraded | 100–130 | 0.6–0.8 | medium alert, rotation suggested |
-| Critical | > 130 sustained 10 min | > 0.8 | critical alert, SOP-03 assessment |
+| Band     | Heart rate             | Fatigue index | Action                            |
+| -------- | ---------------------- | ------------- | --------------------------------- |
+| Normal   | 60–100                 | < 0.6         | none                              |
+| Degraded | 100–130                | 0.6–0.8       | medium alert, rotation suggested  |
+| Critical | > 130 sustained 10 min | > 0.8         | critical alert, SOP-03 assessment |

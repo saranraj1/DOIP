@@ -27,6 +27,7 @@ __pycache__/
 .venv/
 venv/
 .pytest_cache/
+/yolov8n.pt
 
 # Local databases and IDE caches
 .reentry/

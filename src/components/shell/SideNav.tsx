@@ -15,6 +15,8 @@ import {
   Users,
   Shield,
   ChevronLeft,
+  FileEdit,
+  BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +26,7 @@ export interface NavItem {
   code: string;
   icon: React.ComponentType<{ className?: string }>;
   adminOnly?: boolean;
+  plannerOnly?: boolean; // visible to planner + admin
 }
 
 export const NAV_ITEMS: NavItem[] = [
@@ -31,6 +34,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", code: "S2", icon: LayoutDashboard },
   { to: "/run", label: "Run Control", code: "S4", icon: Play },
   { to: "/planner", label: "Mission Planner", code: "S5", icon: RouteIcon },
+  { to: "/doctrine", label: "Doctrine & SOPs", code: "S17", icon: BookOpen },
   { to: "/replay", label: "Replay", code: "S6", icon: History },
   { to: "/sitrep", label: "AI Sitrep", code: "S7", icon: Sparkles },
   { to: "/whatif", label: "What-If Theater", code: "S8", icon: FlaskConical },
@@ -40,6 +44,14 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/analytics", label: "Analytics", code: "S12", icon: BarChart3 },
   { to: "/advisor", label: "Investment Advisor", code: "S13", icon: Landmark },
   { to: "/warroom", label: "War-Room", code: "S14", icon: Users },
+  // P2-1: Scenario DSL Editor — planner and admin roles
+  {
+    to: "/scenario-editor",
+    label: "Scenario Editor",
+    code: "S16",
+    icon: FileEdit,
+    plannerOnly: true,
+  },
   { to: "/admin", label: "Admin", code: "S15", icon: Shield, adminOnly: true },
 ];
 
@@ -53,7 +65,11 @@ export function SideNav({
   role: string | null;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const items = NAV_ITEMS.filter((i) => !i.adminOnly || role === "admin");
+  const items = NAV_ITEMS.filter(
+    (i) =>
+      (!i.adminOnly || role === "admin") &&
+      (!i.plannerOnly || role === "admin" || role === "planner"),
+  );
 
   return (
     <nav

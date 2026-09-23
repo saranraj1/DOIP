@@ -71,10 +71,8 @@
   --color-sev-medium: var(--sev-medium);
   --color-sev-high: var(--sev-high);
   --color-sev-critical: var(--sev-critical);
-  --font-mono:
-    ui-monospace, "JetBrains Mono", "SFMono-Regular", "Menlo", "Consolas", monospace;
+  --font-mono: ui-monospace, "JetBrains Mono", "SFMono-Regular", "Menlo", "Consolas", monospace;
 }
-
 
 :root,
 .dark {
@@ -166,12 +164,7 @@
 }
 
 @utility doip-shimmer {
-  background: linear-gradient(
-    90deg,
-    var(--color-raised) 25%,
-    #2a2a2a 50%,
-    var(--color-raised) 75%
-  );
+  background: linear-gradient(90deg, var(--color-raised) 25%, #2a2a2a 50%, var(--color-raised) 75%);
   background-size: 200% 100%;
   animation: doip-shimmer 1.4s ease-in-out infinite;
 }
@@ -186,35 +179,71 @@
 
 /* --- keyframes ----------------------------------------------- */
 @keyframes doip-pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.4; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
 
 @keyframes doip-slide-in-up {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes doip-fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes doip-shimmer {
-  0%   { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 @keyframes doip-count-flash {
-  0%   { opacity: 0.4; transform: scale(0.92); }
-  60%  { opacity: 1;   transform: scale(1.06); }
-  100% { opacity: 1;   transform: scale(1); }
+  0% {
+    opacity: 0.4;
+    transform: scale(0.92);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 @keyframes doip-marker-pop {
-  0%   { opacity: 0; transform: scale(0.4); }
-  70%  { transform: scale(1.18); }
-  100% { opacity: 1; transform: scale(1); }
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  70% {
+    transform: scale(1.18);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* --- reduced-motion override --------------------------------- */
@@ -505,7 +534,6 @@ thead th {
   line-height: 13px;
   user-select: none;
 }
-
 
 /* ============================================================
  * Depth system — layered glass panels, glows, textured ground

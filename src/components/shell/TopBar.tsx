@@ -21,7 +21,8 @@ export function TopBar({
   const userName = useSim((s) => s.userName);
   const unacked = useSim((s) => Object.values(s.world.alerts).filter((a) => !a.acked).length);
   const critical = useSim(
-    (s) => Object.values(s.world.alerts).filter((a) => !a.acked && a.severity === "critical").length,
+    (s) =>
+      Object.values(s.world.alerts).filter((a) => !a.acked && a.severity === "critical").length,
   );
 
   const statusColor =
@@ -47,12 +48,22 @@ export function TopBar({
         <span className="text-muted-foreground">SIM</span>
         <span className="text-mono tabular-nums">{formatSimClockZ(tick)}</span>
       </div>
-      <div className="hidden items-center gap-2 font-mono text-xs md:flex" title="Grid reference of map centre">
+      <div
+        className="hidden items-center gap-2 font-mono text-xs md:flex"
+        title="Grid reference of map centre"
+      >
         <span className="text-muted-foreground">GRID</span>
-        <span className="text-mono tabular-nums">{center ? gridRef(center.lat, center.lon) : "—— ———— ————"}</span>
+        <span className="text-mono tabular-nums">
+          {center ? gridRef(center.lat, center.lon) : "—— ———— ————"}
+        </span>
       </div>
       <div className={cn("flex items-center gap-1.5 font-mono text-xs", statusColor)}>
-        <span className={cn("size-1.5 rounded-full bg-current", status === "RUNNING" && "animate-pulse")} />
+        <span
+          className={cn(
+            "size-1.5 rounded-full bg-current",
+            status === "RUNNING" && "animate-pulse",
+          )}
+        />
         {status}
       </div>
       <div className="hidden font-mono text-xs text-muted-foreground sm:block">
@@ -86,7 +97,11 @@ export function TopBar({
         to="/dashboard"
         className={cn(
           "flex items-center gap-1.5  border border-border px-2 py-1 font-mono text-xs",
-          critical > 0 ? "text-sev-critical pulse-critical" : unacked > 0 ? "text-sev-medium" : "text-muted-foreground",
+          critical > 0
+            ? "text-sev-critical pulse-critical"
+            : unacked > 0
+              ? "text-sev-medium"
+              : "text-muted-foreground",
         )}
         title={`${unacked} unacknowledged alerts`}
       >

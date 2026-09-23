@@ -5,7 +5,20 @@ import { EmptyState, Panel, Mono } from "@/components/doip/primitives";
 import { canPlan, formatCoord } from "@/lib/doip";
 import { simStore, useSim } from "@/sim/store";
 import { toast } from "sonner";
-import { Check, X, Undo2, Trash2, Rocket } from "lucide-react";
+import { cn } from "@/lib/utils";
+import {
+  Check,
+  X,
+  Undo2,
+  Trash2,
+  Rocket,
+  Copy,
+  FileCode,
+  ShieldCheck,
+  AlertOctagon,
+  Fuel,
+  Compass,
+} from "lucide-react";
 
 export const Route = createFileRoute("/planner")({
   head: () => ({
@@ -13,10 +26,15 @@ export const Route = createFileRoute("/planner")({
       { title: "Mission Planner — DOIP" },
       {
         name: "description",
-        content: "Draw waypoints on the tactical map and compare a naive route against an optimized one before launch.",
+        content:
+          "Draw waypoints on the tactical map and compare a naive route against an optimized one before launch.",
       },
       { property: "og:title", content: "Mission Planner — DOIP" },
-      { property: "og:description", content: "Waypoint planning with terrain, threat and weather cost breakdown and a feasibility checklist." },
+      {
+        property: "og:description",
+        content:
+          "Waypoint planning with terrain, threat and weather cost breakdown and a feasibility checklist.",
+      },
     ],
   }),
   component: PlannerScreen,
@@ -63,7 +81,10 @@ function PlannerScreen() {
   const [waypoints, setWaypoints] = useState<Array<[number, number]>>([]);
   const [unitId, setUnitId] = useState<string>("");
 
-  const units = useMemo(() => Object.values(world.units).filter((u) => u.kind !== "depot"), [world.units]);
+  const units = useMemo(
+    () => Object.values(world.units).filter((u) => u.kind !== "depot"),
+    [world.units],
+  );
   const unit = units.find((u) => u.id === unitId) ?? units[0];
   const editable = canPlan(role);
 
@@ -84,7 +105,10 @@ function PlannerScreen() {
         const lats = z.points.map((p) => p[0]);
         const lons = z.points.map((p) => p[1]);
         return (
-          pt[0] > Math.min(...lats) && pt[0] < Math.max(...lats) && pt[1] > Math.min(...lons) && pt[1] < Math.max(...lons)
+          pt[0] > Math.min(...lats) &&
+          pt[0] < Math.max(...lats) &&
+          pt[1] > Math.min(...lons) &&
+          pt[1] < Math.max(...lons)
         );
       }),
     [threatZones],
@@ -97,7 +121,9 @@ function PlannerScreen() {
 
   // Ch18 S5: route cost split — distance + terrain friction + threat exposure + weather exposure.
   const cost = useMemo(() => {
-    const segments = optimized.slice(1).map((p, i) => [optimized[i]!, p] as [[number, number], [number, number]]);
+    const segments = optimized
+      .slice(1)
+      .map((p, i) => [optimized[i]!, p] as [[number, number], [number, number]]);
     const threatKm = segments
       .filter(([a, b]) => inZone(a) || inZone(b))
       .reduce((s, [a, b]) => s + haversineKm(a, b), 0);
@@ -121,11 +147,64 @@ function PlannerScreen() {
   const checks = [
     { label: "At least 2 waypoints", ok: waypoints.length >= 2 },
     { label: "Assigned unit selected", ok: Boolean(unit) },
-    { label: `Fuel sufficient (${(optKm * fuelPerKm).toFixed(0)}L needed)`, ok: (unit?.fuel ?? 0) >= optKm * fuelPerKm },
+    {
+      label: `Fuel sufficient (${(optKm * fuelPerKm).toFixed(0)}L needed)`,
+      ok: (unit?.fuel ?? 0) >= optKm * fuelPerKm,
+    },
     { label: "No waypoint inside a restricted/threat zone", ok: !inThreatZone },
     { label: "Weather clear along route", ok: cost.weatherKm === 0 },
   ];
   const feasible = checks.every((c) => c.ok);
+
+  const maxRangeKm = unit ? unit.fuel / fuelPerKm : 0;
+  const pnrKm = maxRangeKm / 2;
+  const isPnrExceeded = optKm > pnrKm;
+  const fuelNeededL = optKm * fuelPerKm;
+
+  const autoDetour = () => {
+    if (waypoints.length < 2) return;
+    const adjusted = waypoints.map((pt) => {
+      let lat = pt[0];
+      const lon = pt[1];
+      threatZones.forEach((z) => {
+        const lats = z.points.map((p) => p[0]);
+        const lons = z.points.map((p) => p[1]);
+        const minLat = Math.min(...lats);
+        const maxLat = Math.max(...lats);
+        const minLon = Math.min(...lons);
+        const maxLon = Math.max(...lons);
+        if (lat >= minLat && lat <= maxLat && lon >= minLon && lon <= maxLon) {
+          lat = maxLat + 0.02;
+        }
+      });
+      weatherCells.forEach((w) => {
+        const distKm = haversineKm([lat, lon], [w.lat, w.lon]);
+        if (distKm * 1000 < w.radiusM + 500) {
+          lat += 0.03;
+        }
+      });
+      return [Number(lat.toFixed(4)), Number(lon.toFixed(4))] as [number, number];
+    });
+    setWaypoints(adjusted);
+    toast.success("Detour calculated", {
+      description: "Waypoints adjusted outside threat perimeter and weather cells.",
+    });
+  };
+
+  const exportDsl = () => {
+    const yaml = `# DOIP Defensive Waypoint Tasking
+- tick: ${world.tick + 5}
+  action: assign_route
+  unit_id: "${unit?.id || "UN-01"}"
+  defensive_posture: "hold_and_monitor"
+  waypoints:
+${optimized.map((p) => `    - [${p[0]}, ${p[1]}]`).join("\n")}
+`;
+    void navigator.clipboard.writeText(yaml);
+    toast.success("Mission DSL copied to clipboard", {
+      description: "Ready to paste into Scenario Editor (S8).",
+    });
+  };
 
   if (!units.length) {
     return (
@@ -139,7 +218,11 @@ function PlannerScreen() {
     <div className="grid h-full gap-2 p-2 lg:grid-cols-[minmax(0,1fr)_340px]">
       <Panel
         title="Plan surface"
-        actions={<Mono className="text-[10px]">{editable ? "CLICK MAP TO ADD WAYPOINT" : "READ-ONLY ROLE"}</Mono>}
+        actions={
+          <Mono className="text-[10px]">
+            {editable ? "CLICK MAP TO ADD WAYPOINT" : "READ-ONLY ROLE"}
+          </Mono>
+        }
         bodyClassName="p-0 h-[620px]"
       >
         <MapView
@@ -152,7 +235,9 @@ function PlannerScreen() {
             { points: naive, color: "#8A8A8A", dashed: true },
             { points: optimized, color: "#FFFFFF" },
           ]}
-          {...(editable ? { onMapClick: (p: [number, number]) => setWaypoints((w) => [...w, p]) } : {})}
+          {...(editable
+            ? { onMapClick: (p: [number, number]) => setWaypoints((w) => [...w, p]) }
+            : {})}
         />
       </Panel>
 
@@ -174,45 +259,64 @@ function PlannerScreen() {
             ))}
           </select>
 
-          <div className="mt-2 flex gap-2">
+          <div className="mt-2 flex gap-1.5">
             <button
               onClick={() => setWaypoints((w) => w.slice(0, -1))}
               disabled={!editable || !waypoints.length}
-              className="flex flex-1 items-center justify-center gap-1.5 border border-border px-2 py-1.5 font-mono text-[10px] uppercase tracking-widest hover:bg-raised disabled:opacity-40"
+              className="flex flex-1 items-center justify-center gap-1 border border-border px-1.5 py-1.5 font-mono text-[10px] uppercase tracking-widest hover:bg-raised disabled:opacity-40"
             >
               <Undo2 className="size-3" /> Undo
             </button>
             <button
               onClick={() => setWaypoints([])}
               disabled={!editable || !waypoints.length}
-              className="flex flex-1 items-center justify-center gap-1.5 border border-border px-2 py-1.5 font-mono text-[10px] uppercase tracking-widest hover:bg-raised disabled:opacity-40"
+              className="flex flex-1 items-center justify-center gap-1 border border-border px-1.5 py-1.5 font-mono text-[10px] uppercase tracking-widest hover:bg-raised disabled:opacity-40"
             >
               <Trash2 className="size-3" /> Clear
+            </button>
+            <button
+              onClick={autoDetour}
+              disabled={!editable || waypoints.length < 2}
+              className="flex flex-1 items-center justify-center gap-1 border border-primary/60 bg-primary/10 px-1.5 py-1.5 font-mono text-[10px] uppercase tracking-widest text-primary hover:bg-primary/20 disabled:opacity-40"
+              title="Auto-adjust waypoints to steer clear of active threat zones and storm cells"
+            >
+              <ShieldCheck className="size-3" /> Detour
             </button>
           </div>
 
           <ul className="mt-2 max-h-40 space-y-0.5 overflow-y-auto">
             {waypoints.map((w, i) => (
-              <li key={i} className="flex items-center gap-2 font-mono text-[10px] text-muted-foreground">
+              <li
+                key={i}
+                className="flex items-center gap-2 font-mono text-[10px] text-muted-foreground"
+              >
                 <span className="text-primary">WP{String(i + 1).padStart(2, "0")}</span>
                 {formatCoord(w[0], w[1])}
               </li>
             ))}
-            {!waypoints.length && <EmptyState label="No waypoints" hint="Click the map to start planning." />}
+            {!waypoints.length && (
+              <EmptyState label="No waypoints" hint="Click the map to start planning." />
+            )}
           </ul>
         </Panel>
 
         <Panel title="Route comparison">
           <div className="grid grid-cols-2 gap-2 font-mono text-xs">
             <div className=" border border-border p-2">
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Naive</div>
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                Naive
+              </div>
               <div className="mt-1 text-lg text-foreground">{naiveKm.toFixed(1)} km</div>
-              <div className="text-[10px] text-muted-foreground">{((naiveKm / speed) * 60).toFixed(0)} min</div>
+              <div className="text-[10px] text-muted-foreground">
+                {((naiveKm / speed) * 60).toFixed(0)} min
+              </div>
             </div>
             <div className=" border border-primary/40 bg-primary/5 p-2">
               <div className="text-[10px] uppercase tracking-widest text-primary">Optimized</div>
               <div className="mt-1 text-lg text-primary">{optKm.toFixed(1)} km</div>
-              <div className="text-[10px] text-muted-foreground">{((optKm / speed) * 60).toFixed(0)} min</div>
+              <div className="text-[10px] text-muted-foreground">
+                {((optKm / speed) * 60).toFixed(0)} min
+              </div>
             </div>
           </div>
           <dl className="mt-2 space-y-1 font-mono text-[11px]">
@@ -221,6 +325,43 @@ function PlannerScreen() {
             <Row k="Fuel saved" v={`${(saved * fuelPerKm).toFixed(1)} L`} />
             <Row k="Time saved" v={`${((saved / speed) * 60).toFixed(0)} min`} />
           </dl>
+
+          <div className="mt-3 border-t border-border pt-2">
+            <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-widest">
+              <span className="flex items-center gap-1 text-muted-foreground">
+                <Fuel className="size-3" /> Point of No Return (PNR)
+              </span>
+              <span
+                className={cn("font-bold", isPnrExceeded ? "text-sev-critical" : "text-success")}
+              >
+                {pnrKm.toFixed(1)} km
+              </span>
+            </div>
+            <div className="mt-1.5 flex h-2 w-full overflow-hidden border border-border bg-base">
+              <div
+                className={cn(
+                  "h-full transition-all",
+                  isPnrExceeded ? "bg-sev-critical" : "bg-primary",
+                )}
+                style={{
+                  width: `${Math.min(100, (optKm / (maxRangeKm || 1)) * 100)}%`,
+                }}
+                title={`Route consumption: ${fuelNeededL.toFixed(0)}L`}
+              />
+            </div>
+            <div className="mt-1 flex justify-between font-mono text-[9px] text-muted-foreground">
+              <span>0 km</span>
+              <span className="font-bold text-primary">PNR: {pnrKm.toFixed(1)} km</span>
+              <span>Max: {maxRangeKm.toFixed(1)} km</span>
+            </div>
+            {isPnrExceeded && (
+              <div className="mt-2 flex items-center gap-1.5 border border-sev-critical/60 bg-sev-critical/10 p-1.5 font-mono text-[10px] text-sev-critical">
+                <AlertOctagon className="size-3.5 shrink-0" />
+                <span>PNR Exceeded: Forward refueling required for safe egress.</span>
+              </div>
+            )}
+          </div>
+
           <p className="mt-2 font-mono text-[9px] text-muted-foreground">
             Ordering: nearest-neighbour tour from WP01.
           </p>
@@ -244,7 +385,8 @@ function PlannerScreen() {
             </div>
           </dl>
           <p className="mt-2 font-mono text-[9px] text-muted-foreground">
-            Synthetic cost model: km-equivalent penalties over segments crossing threat zones and weather cells.
+            Synthetic cost model: km-equivalent penalties over segments crossing threat zones and
+            weather cells.
           </p>
         </Panel>
 
@@ -257,7 +399,9 @@ function PlannerScreen() {
                 ) : (
                   <X className="size-3.5 text-red-400" />
                 )}
-                <span className={c.ok ? "text-muted-foreground" : "text-foreground"}>{c.label}</span>
+                <span className={c.ok ? "text-muted-foreground" : "text-foreground"}>
+                  {c.label}
+                </span>
               </li>
             ))}
           </ul>
@@ -272,6 +416,13 @@ function PlannerScreen() {
             className="mt-2 flex w-full items-center justify-center gap-2 bg-primary px-2 py-2 font-mono text-xs uppercase tracking-widest text-primary-foreground disabled:opacity-40"
           >
             <Rocket className="size-3.5" /> Launch mission
+          </button>
+          <button
+            onClick={exportDsl}
+            disabled={!optimized.length}
+            className="mt-1.5 flex w-full items-center justify-center gap-1.5 border border-border px-2 py-1.5 font-mono text-[10px] uppercase tracking-widest hover:bg-raised disabled:opacity-40"
+          >
+            <FileCode className="size-3" /> Export to Scenario DSL
           </button>
         </Panel>
       </div>

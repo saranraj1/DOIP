@@ -7,7 +7,7 @@ version: 1.0
 
 # REF-03 — Sector Map Legend & Zone Types
 
-*Simulated training reference.*
+_Simulated training reference._
 
 ## Sectors
 
@@ -15,13 +15,13 @@ The operational area is divided into lettered sectors (A, B, C, …) defined in 
 
 ## Zone types
 
-| Zone | Map style | Meaning | Routing behavior |
-|---|---|---|---|
-| Patrol zone | dashed blue outline | Assigned patrol area | preferred cost |
-| Monitoring zone | dotted amber outline | Watch area; unknown tracks raise medium | normal cost |
-| Restricted zone | solid red fill (hatched) | No entry without authorization | never routed through |
-| Threat zone | orange gradient fill | Elevated risk (scenario- or inject-defined) | high routing cost |
-| Weather cell | translucent gray/blue blob | Active weather; slows units | dynamic cost by intensity |
+| Zone            | Map style                  | Meaning                                     | Routing behavior          |
+| --------------- | -------------------------- | ------------------------------------------- | ------------------------- |
+| Patrol zone     | dashed blue outline        | Assigned patrol area                        | preferred cost            |
+| Monitoring zone | dotted amber outline       | Watch area; unknown tracks raise medium     | normal cost               |
+| Restricted zone | solid red fill (hatched)   | No entry without authorization              | never routed through      |
+| Threat zone     | orange gradient fill       | Elevated risk (scenario- or inject-defined) | high routing cost         |
+| Weather cell    | translucent gray/blue blob | Active weather; slows units                 | dynamic cost by intensity |
 
 ## Marker severity shapes
 

@@ -7,7 +7,7 @@ version: 1.0
 
 # SOP-06 — Communications-Loss Protocol
 
-*Simulated training document. Not real doctrine.*
+_Simulated training document. Not real doctrine._
 
 ## 1. Stages
 

@@ -7,7 +7,7 @@ version: 1.0
 
 # SOP-02 — Quick Reaction Force (QRF) Dispatch
 
-*Simulated training document. Not real doctrine.*
+_Simulated training document. Not real doctrine._
 
 ## 1. Dispatch criteria
 

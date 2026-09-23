@@ -7,7 +7,7 @@ version: 1.0
 
 # POL-01 — Rules of Engagement (Simulated)
 
-*Simulated training policy for exercise play only. Not real ROE. This platform contains no engagement mechanics.*
+_Simulated training policy for exercise play only. Not real ROE. This platform contains no engagement mechanics._
 
 ## 1. Scope
 

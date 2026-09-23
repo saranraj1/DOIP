@@ -8,7 +8,7 @@ A quick variant (SC-1, seed 42, 100 ticks) runs on every push; the full SC-2 run
 
 ## The contract
 
-Same scenario + same seed → byte-identical event sequence, on every machine, forever — until an *intentional, reviewed* engine-behavior change re-freezes the fixture.
+Same scenario + same seed → byte-identical event sequence, on every machine, forever — until an _intentional, reviewed_ engine-behavior change re-freezes the fixture.
 
 ## If your PR breaks the hash
 

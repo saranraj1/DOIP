@@ -5,6 +5,7 @@ import { AiBadge, EmptyState, Mono, SeverityTag } from "@/components/doip/primit
 import { formatSimClock } from "@/lib/doip";
 import { useSim } from "@/sim/store";
 import { cn } from "@/lib/utils";
+import { api } from "@/lib/api";
 import type { SimEvent, WorldState } from "@/sim/types";
 
 type Tab = "SITREPS" | "ASK" | "WHAT-IF";
@@ -14,16 +15,29 @@ interface Answer {
   q: string;
   a: string;
   cites: SimEvent[];
+  grounded?: boolean | undefined;
+  docCitations?: string[] | undefined;
 }
 
 /** Deterministic, log-grounded answers — the seam a RAG backend replaces later. */
-function answerQuestion(q: string, world: WorldState, events: SimEvent[]): { a: string; cites: SimEvent[] } {
+function answerQuestion(
+  q: string,
+  world: WorldState,
+  events: SimEvent[],
+): { a: string; cites: SimEvent[] } {
   const t = q.toLowerCase();
   const units = Object.values(world.units);
-  const cite = (type: string, n = 3) => events.filter((e) => e.type === type).slice(-n).reverse();
+  const cite = (type: string, n = 3) =>
+    events
+      .filter((e) => e.type === type)
+      .slice(-n)
+      .reverse();
 
   if (/fuel|resupply|logisti|supply/.test(t)) {
-    const low = units.filter((u) => u.fuel < 40).sort((a, b) => a.fuel - b.fuel).slice(0, 4);
+    const low = units
+      .filter((u) => u.fuel < 40)
+      .sort((a, b) => a.fuel - b.fuel)
+      .slice(0, 4);
     return {
       a: low.length
         ? `${low.length} unit(s) under 40% fuel: ${low.map((u) => `${u.callsign} (${u.fuel.toFixed(0)}%)`).join(", ")}. Recommend depot tasking before the next phase.`
@@ -48,7 +62,9 @@ function answerQuestion(q: string, world: WorldState, events: SimEvent[]): { a: 
         ? "HIGH"
         : "MEDIUM/LOW";
     return {
-      a: open.length ? `${open.length} incident(s) open; worst severity ${worst}.` : "No incidents are currently open.",
+      a: open.length
+        ? `${open.length} incident(s) open; worst severity ${worst}.`
+        : "No incidents are currently open.",
       cites: cite("incident_open"),
     };
   }
@@ -109,7 +125,11 @@ export function AiDrawer({ onClose }: { onClose: () => void }) {
     const crit = open.filter((i) => i.severity === "critical" || i.severity === "high");
     const stale = units.filter((u) => u.status === "stale");
     const lowFuel = units.filter((u) => u.fuel < 30);
-    const cite = (type: string, n = 2) => events.filter((e) => e.type === type).slice(-n).reverse();
+    const cite = (type: string, n = 2) =>
+      events
+        .filter((e) => e.type === type)
+        .slice(-n)
+        .reverse();
     return [
       {
         heading: "Posture",
@@ -138,9 +158,44 @@ export function AiDrawer({ onClose }: { onClose: () => void }) {
   const ask = () => {
     const query = q.trim();
     if (!query) return;
-    const { a, cites } = answerQuestion(query, world, events);
-    setMsgs((m) => [...m, { id: m.length + 1, q: query, a, cites }]);
     setQ("");
+
+    // Phase 3: Query backend RAG with fail-soft fallback to local heuristic
+    void (async () => {
+      try {
+        const ragRes = await api.ragQuery(query, events.slice(-50));
+        if (ragRes && ragRes.answer) {
+          const docCites = ragRes.grounding?.valid_doc_citations ?? [];
+          setMsgs((m) => [
+            ...m,
+            {
+              id: m.length + 1,
+              q: query,
+              a: ragRes.answer,
+              cites: [],
+              grounded: ragRes.grounding?.grounded,
+              docCitations: docCites,
+            },
+          ]);
+          return;
+        }
+      } catch {
+        // Fall back to local rule-based heuristic
+      }
+
+      const { a, cites } = answerQuestion(query, world, events);
+      setMsgs((m) => [
+        ...m,
+        {
+          id: m.length + 1,
+          q: query,
+          a,
+          cites,
+          grounded: true,
+          docCitations: [],
+        },
+      ]);
+    })();
   };
 
   return (
@@ -151,22 +206,26 @@ export function AiDrawer({ onClose }: { onClose: () => void }) {
       <header className="flex h-8 shrink-0 items-center gap-1 border-b border-border px-2">
         <span className="font-mono text-[11px] tracking-widest text-ai">✦ AI</span>
         <div className="ml-2 flex gap-1">
-          {(
-            ["SITREPS", "ASK", "WHAT-IF"] as Tab[]
-          ).map((t) => (
+          {(["SITREPS", "ASK", "WHAT-IF"] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
               className={cn(
                 "border px-1.5 py-0.5 font-mono text-[10px] tracking-widest",
-                tab === t ? "border-ai/50 bg-raised text-ai" : "border-border text-muted-foreground hover:text-foreground",
+                tab === t
+                  ? "border-ai/50 bg-raised text-ai"
+                  : "border-border text-muted-foreground hover:text-foreground",
               )}
             >
               {t}
             </button>
           ))}
         </div>
-        <button onClick={onClose} className="ml-auto text-muted-foreground hover:text-foreground" aria-label="Close AI drawer">
+        <button
+          onClick={onClose}
+          className="ml-auto text-muted-foreground hover:text-foreground"
+          aria-label="Close AI drawer"
+        >
           <X className="size-3.5" />
         </button>
       </header>
@@ -187,7 +246,10 @@ export function AiDrawer({ onClose }: { onClose: () => void }) {
                 <CiteChips cites={s.cites} />
               </section>
             ))}
-            <Link to="/sitrep" className="block border border-border px-2 py-1.5 text-center font-mono text-[10px] uppercase tracking-widest text-primary hover:bg-raised">
+            <Link
+              to="/sitrep"
+              className="block border border-border px-2 py-1.5 text-center font-mono text-[10px] uppercase tracking-widest text-primary hover:bg-raised"
+            >
               Full situation report →
             </Link>
           </div>
@@ -195,25 +257,50 @@ export function AiDrawer({ onClose }: { onClose: () => void }) {
           <div className="space-y-2">
             {msgs.map((m) => (
               <div key={m.id}>
-                <div className="border border-border bg-raised/40 p-1.5 text-[12px] text-foreground">{m.q}</div>
+                <div className="border border-border bg-raised/40 p-1.5 text-[12px] text-foreground">
+                  {m.q}
+                </div>
                 <div className="mt-1 border border-ai/30 bg-ai/5 p-1.5">
+                  <div className="mb-1 flex items-center justify-between">
+                    <span className="font-mono text-[9px] uppercase tracking-wider text-ai">
+                      {m.docCitations?.length ? "Doctrine Grounded" : "Event Grounded"}
+                    </span>
+                    <AiBadge label={m.grounded ? "VERIFIED" : "HEURISTIC"} />
+                  </div>
                   <p className="text-[12px] leading-relaxed text-muted-foreground">{m.a}</p>
+                  {m.docCitations && m.docCitations.length > 0 && (
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {m.docCitations.map((doc) => (
+                        <span
+                          key={doc}
+                          className="border border-ai/40 bg-ai/10 px-1 py-0.5 font-mono text-[9px] text-ai"
+                        >
+                          § {doc}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   <CiteChips cites={m.cites} />
                 </div>
               </div>
             ))}
             {!msgs.length && (
               <p className="text-[11px] text-muted-foreground">
-                Ask about the live exercise — fuel, comms, incidents, alerts, weather. Every answer cites the events behind it.
+                Ask about the live exercise — fuel, comms, incidents, alerts, weather. Every answer
+                cites the events behind it.
               </p>
             )}
           </div>
         ) : (
           <div className="space-y-2">
             <p className="text-[12px] leading-relaxed text-muted-foreground">
-              Branch the current state, review the AI-drafted scenario actions, approve, and watch the branch play out. Branches are sandboxed — the live run is untouched.
+              Branch the current state, review the AI-drafted scenario actions, approve, and watch
+              the branch play out. Branches are sandboxed — the live run is untouched.
             </p>
-            <Link to="/whatif" className="block border border-ai/40 bg-ai/5 px-2 py-1.5 text-center font-mono text-[10px] uppercase tracking-widest text-ai hover:bg-raised">
+            <Link
+              to="/whatif"
+              className="block border border-ai/40 bg-ai/5 px-2 py-1.5 text-center font-mono text-[10px] uppercase tracking-widest text-ai hover:bg-raised"
+            >
               Open What-If Theater →
             </Link>
           </div>
@@ -229,7 +316,11 @@ export function AiDrawer({ onClose }: { onClose: () => void }) {
             placeholder="Ask the exercise…"
             className="min-w-0 flex-1 border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-ai/60"
           />
-          <button onClick={ask} className="border border-ai/40 bg-ai/10 px-2 text-ai" aria-label="Ask">
+          <button
+            onClick={ask}
+            className="border border-ai/40 bg-ai/10 px-2 text-ai"
+            aria-label="Ask"
+          >
             <Send className="size-3.5" />
           </button>
         </div>

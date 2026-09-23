@@ -69,7 +69,6 @@ const DEFAULT_PITCH = 55;
 const DEFAULT_BEARING = -15;
 const TRAIL_LEN = 20;
 
-
 export interface TacticalMapProps {
   units?: Unit[];
   incidents?: Incident[];
@@ -91,8 +90,7 @@ export interface TacticalMapProps {
   className?: string;
 }
 
-const unitColor = (u: Unit) =>
-  "#FFFFFF";
+const unitColor = (u: Unit) => "#FFFFFF";
 
 /** metres -> approximate degree ring polygon */
 function ringPolygon(lat: number, lon: number, radiusM: number, steps = 40): number[][] {
@@ -168,12 +166,13 @@ export default function TacticalMap({
     mapRef.current = map;
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
 
-    map.on("error", (e: { error?: { message?: string } }) => console.warn("[map]", e?.error?.message ?? e));
+    map.on("error", (e: { error?: { message?: string } }) =>
+      console.warn("[map]", e?.error?.message ?? e),
+    );
     const doneLoading = () => setTilesLoading(false);
     map.on("load", doneLoading);
     map.on("idle", doneLoading);
     const loadFallback = window.setTimeout(doneLoading, 4000);
-
 
     const initLayers = () => {
       // Basemap kept just off pure black so moving markers do not smear
@@ -205,7 +204,6 @@ export default function TacticalMap({
           /* style may not expose a building source-layer */
         }
       }
-
 
       const empty = fc([]);
       const src = (id: string, lineMetrics = false) =>
@@ -345,7 +343,6 @@ export default function TacticalMap({
       const c = map.getCenter();
       viewRef.current = { center: [c.lng, c.lat], zoom: map.getZoom() };
     });
-    
 
     return () => {
       Object.values(markersRef.current).forEach((m) => m.remove());
@@ -360,7 +357,6 @@ export default function TacticalMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [basemap]);
 
-
   /* ---------- zones ---------- */
   useEffect(() => {
     const map = mapRef.current;
@@ -372,7 +368,9 @@ export default function TacticalMap({
       properties: { color: color(z.kind), height: z.kind === "restricted" ? 50 : 8, name: z.name },
       geometry: {
         type: "Polygon" as const,
-        coordinates: [[...z.points.map(([la, lo]) => [lo, la]), [z.points[0]![1], z.points[0]![0]]]],
+        coordinates: [
+          [...z.points.map(([la, lo]) => [lo, la]), [z.points[0]![1], z.points[0]![0]]],
+        ],
       },
     }));
     (map.getSource("zones") as maplibregl.GeoJSONSource | undefined)?.setData(fc(polys));
@@ -383,7 +381,10 @@ export default function TacticalMap({
           properties: { color: color(z.kind) },
           geometry: {
             type: "LineString",
-            coordinates: [...z.points.map(([la, lo]) => [lo, la]), [z.points[0]![1], z.points[0]![0]]],
+            coordinates: [
+              ...z.points.map(([la, lo]) => [lo, la]),
+              [z.points[0]![1], z.points[0]![0]],
+            ],
           },
         })),
       ),
@@ -492,7 +493,9 @@ export default function TacticalMap({
           ev.stopPropagation();
           cbRef.current.onSelectUnit?.(u.id);
         });
-        marker = new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([u.lon, u.lat]).addTo(map);
+        marker = new maplibregl.Marker({ element: el, anchor: "bottom" })
+          .setLngLat([u.lon, u.lat])
+          .addTo(map);
         markersRef.current[u.id] = marker;
       }
       marker.setLngLat([u.lon, u.lat]);
@@ -652,12 +655,15 @@ export default function TacticalMap({
         >
           <Compass className="size-3.5" style={{ transform: `rotate(${-bearing}deg)` }} />
         </button>
-        <button onClick={toggle3d} title={is3d ? "Switch to 2D" : "Switch to 3D"} className="doip-map-btn">
+        <button
+          onClick={toggle3d}
+          title={is3d ? "Switch to 2D" : "Switch to 3D"}
+          className="doip-map-btn"
+        >
           {is3d ? <Square className="size-3.5" /> : <Box className="size-3.5" />}
           <span className="font-mono text-[10px]">{is3d ? "2D" : "3D"}</span>
         </button>
       </div>
     </div>
   );
-
 }

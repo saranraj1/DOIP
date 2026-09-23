@@ -1,0 +1,89 @@
+name: "SC-4 Convoy Escort Under Threat"
+id: "SC-4"
+area: "geo/supply_corridor.geojson"
+sim_start: "2026-01-13T08:00:00"
+duration_minutes: 300
+seed: 4001
+
+entities:
+  - id: e1
+    type: vehicle
+    callsign: "ESCORT-LEAD"
+    start: [77.51, 12.92]
+    behavior: patrol
+    patrol_zone: "highway_route_9"
+    personnel: 4
+    battery_pct: 100
+    resources: { fuel: 100, medkit: 6, food: 80, battery: 100 }
+  - id: c1
+    type: vehicle
+    callsign: "MULE-CONVOY-1"
+    start: [77.50, 12.91]
+    behavior: follow_route
+    patrol_zone: "highway_route_9"
+    personnel: 2
+    battery_pct: 100
+    resources: { fuel: 500, medkit: 20, food: 300, battery: 100 }
+  - id: d1
+    type: depot
+    callsign: "DEPOT-SOUTH"
+    start: [77.62, 12.98]
+    behavior: idle
+    patrol_zone: "depot_perimeter"
+    personnel: 15
+    battery_pct: 100
+    resources: { fuel: 5000, medkit: 180, food: 1000, battery: 200 }
+
+entity_groups:
+  - count: 7
+    id_prefix: "c"
+    start_index: 2
+    template:
+      type: vehicle
+      behavior: follow_route
+      patrol_zone: "highway_route_9"
+      personnel: 2
+      battery_pct: 100
+      resources: { fuel: 400, medkit: 10, food: 200, battery: 100 }
+  - count: 10
+    id_prefix: "e"
+    start_index: 2
+    template:
+      type: ground_team
+      behavior: patrol
+      patrol_zone: "convoy_flank"
+      personnel: 4
+      battery_pct: 95
+      resources: { fuel: 85, medkit: 4, food: 85, battery: 95 }
+
+timeline:
+  - at: "+01:00"
+    action: spawn_weather
+    params:
+      kind: storm
+      intensity: 0.75
+      center: [77.55, 12.95]
+      radius_km: 7.0
+      drift_kmh: 15.0
+  - at: "+01:45"
+    action: create_incident
+    params:
+      kind: vehicle-breakdown
+      target: c1
+      severity: high
+      rationale: "Axle failure in heavy mud under severe rain — SOP-04 recovery called"
+  - at: "+02:30"
+    action: raise_alert
+    params:
+      target: "BASE_AIR_DEFENCE"
+      severity: medium
+      message: "Convoy halt verified at checkpoint Delta"
+
+rules:
+  - when: unit_in_weather(c1, storm, 0.5)
+    then:
+      action: modify_speed
+      params: { unit: c1, multiplier: 0.5 }
+
+end_conditions:
+  - sim_time_elapsed

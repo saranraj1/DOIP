@@ -1,0 +1,80 @@
+name: "SC-6 Extended Logistics Sustainment"
+id: "SC-6"
+area: "geo/theatre_logistics.geojson"
+sim_start: "2026-01-15T00:00:00"
+duration_minutes: 720
+seed: 6001
+
+entities:
+  - id: d1
+    type: depot
+    callsign: "CENTRAL-DEPOT-1"
+    start: [77.55, 12.95]
+    behavior: idle
+    patrol_zone: "depot_perimeter"
+    personnel: 30
+    battery_pct: 100
+    resources: { fuel: 8000, medkit: 300, food: 2000, battery: 500 }
+  - id: d2
+    type: depot
+    callsign: "FORWARD-DEPOT-2"
+    start: [77.65, 12.99]
+    behavior: idle
+    patrol_zone: "forward_depot_perimeter"
+    personnel: 15
+    battery_pct: 100
+    resources: { fuel: 2200, medkit: 80, food: 400, battery: 120 }
+
+entity_groups:
+  - count: 12
+    id_prefix: "c"
+    start_index: 1
+    template:
+      type: vehicle
+      behavior: follow_route
+      patrol_zone: "logistics_ring"
+      personnel: 2
+      battery_pct: 100
+      resources: { fuel: 600, medkit: 15, food: 350, battery: 100 }
+  - count: 16
+    id_prefix: "g"
+    start_index: 1
+    template:
+      type: ground_team
+      behavior: patrol
+      patrol_zone: "perimeter_watch"
+      personnel: 4
+      battery_pct: 95
+      resources: { fuel: 90, medkit: 4, food: 85, battery: 95 }
+
+timeline:
+  - at: "+02:00"
+    action: spawn_weather
+    params:
+      kind: rain
+      intensity: 0.5
+      center: [77.60, 12.97]
+      radius_km: 8.0
+      drift_kmh: 10.0
+  - at: "+04:30"
+    action: create_incident
+    params:
+      kind: supply-shortfall
+      target: d2
+      severity: high
+      rationale: "Forward depot stock burn rate exceeds forecast — resupply cycle triggered"
+  - at: "+06:00"
+    action: raise_alert
+    params:
+      target: "BASE_AIR_DEFENCE"
+      severity: low
+      message: "Midpoint fuel balance audit complete"
+
+rules:
+  - when: resource_below(d2, fuel, 0.25)
+    then:
+      action: raise_alert
+      params: { target: d2, severity: high, message: "Depot 2 fuel below 25%" }
+
+end_conditions:
+  - sim_time_elapsed

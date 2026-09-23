@@ -12,10 +12,14 @@ export const Route = createFileRoute("/dashboard")({
       { title: "Dashboard — DOIP" },
       {
         name: "description",
-        content: "Exercise overview: active units, open incidents by severity, unacknowledged alerts and stock warnings.",
+        content:
+          "Exercise overview: active units, open incidents by severity, unacknowledged alerts and stock warnings.",
       },
       { property: "og:title", content: "Dashboard — DOIP" },
-      { property: "og:description", content: "Exercise KPIs, module tiles, mini tactical map and the live event feed." },
+      {
+        property: "og:description",
+        content: "Exercise KPIs, module tiles, mini tactical map and the live event feed.",
+      },
     ],
   }),
   component: DashboardScreen,
@@ -65,7 +69,8 @@ function DashboardScreen() {
   }, [incidents]);
   const unacked = alerts.filter((a) => !a.acked);
   const stockWarnings = depots.filter(
-    (d) => d.stock.fuel < 900 || d.stock.medkit < 25 || d.stock.rations < 120 || d.stock.battery < 40,
+    (d) =>
+      d.stock.fuel < 900 || d.stock.medkit < 25 || d.stock.rations < 120 || d.stock.battery < 40,
   );
   const recent = useMemo(() => events.slice(-40).reverse(), [events]);
 
@@ -90,6 +95,20 @@ function DashboardScreen() {
     ? Math.max(...weatherCells.map((w) => w.intensity)) * 100
     : 0;
 
+  // Composite Readiness Health Index (CRHI) [0..100%]
+  const crhi = useMemo(() => {
+    let score = 100;
+    const openIncs = incidents.filter((i) => i.open);
+    const critIncs = openIncs.filter((i) => i.severity === "critical").length;
+    const highIncs = openIncs.filter((i) => i.severity === "high").length;
+    score -= critIncs * 15 + highIncs * 8 + (openIncs.length - critIncs - highIncs) * 3;
+    score -= Math.min(25, strained * 6);
+    score -= stockWarnings.length * 8;
+    const staleUnits = units.filter((u) => u.status === "stale").length;
+    score -= staleUnits * 10;
+    return Math.max(5, Math.min(100, Math.round(score)));
+  }, [incidents, strained, stockWarnings, units]);
+
   if (!units.length) {
     return (
       <div className="p-2">
@@ -102,14 +121,28 @@ function DashboardScreen() {
     <div className="flex h-full min-h-0 flex-col gap-2 p-2">
       <StatStrip
         items={[
-          { label: "Active units", value: units.length, sub: `${units.filter((u) => u.status === "slowed").length} slowed` },
+          {
+            label: "CRHI Index",
+            value: `${crhi}%`,
+            sub: crhi > 75 ? "Optimal readiness" : crhi > 50 ? "Degraded" : "Critical stress",
+            accent: crhi > 75 ? "#4ADE80" : crhi > 50 ? "#FBBF24" : "#F87171",
+          },
+          {
+            label: "Active units",
+            value: units.length,
+            sub: `${units.filter((u) => u.status === "slowed").length} slowed`,
+          },
           {
             label: "Open incidents",
             value: incidents.filter((i) => i.open).length,
             sub: (
               <span className="flex gap-1">
                 {SEVERITY_ORDER.map((sv) => (
-                  <span key={sv} className="font-mono text-[11px]" style={{ color: SEVERITY_META[sv].color }}>
+                  <span
+                    key={sv}
+                    className="font-mono text-[11px]"
+                    style={{ color: SEVERITY_META[sv].color }}
+                  >
                     {SEVERITY_META[sv].shape}
                     {openBySeverity[sv] ?? 0}
                   </span>
@@ -147,7 +180,11 @@ function DashboardScreen() {
           to="/"
           label="Weather"
           value={weatherCells.length}
-          sub={weatherCells.length ? `active cell(s) · peak intensity ${peakIntensity.toFixed(0)}%` : "no active cells · view on live map"}
+          sub={
+            weatherCells.length
+              ? `active cell(s) · peak intensity ${peakIntensity.toFixed(0)}%`
+              : "no active cells · view on live map"
+          }
           warn={peakIntensity > 70}
         />
       </div>
@@ -169,7 +206,11 @@ function DashboardScreen() {
             <span className="doip-strip">Unacknowledged alerts</span>
             <span className="doip-strip">{unacked.length}</span>
           </header>
-          <div className={unacked.length ? "min-h-0 flex-[0_0_45%] overflow-y-auto" : "shrink-0 overflow-hidden"}>
+          <div
+            className={
+              unacked.length ? "min-h-0 flex-[0_0_45%] overflow-y-auto" : "shrink-0 overflow-hidden"
+            }
+          >
             {unacked.length === 0 ? (
               <div className="p-2 doip-strip">All alerts acknowledged</div>
             ) : (
@@ -177,26 +218,38 @@ function DashboardScreen() {
                 {unacked
                   .slice()
                   .sort((a, b) => SEVERITY_META[a.severity].order - SEVERITY_META[b.severity].order)
-                  .map((a) => (
-                    <li key={a.id} className="flex items-center gap-1.5 border-b border-border/60 px-2 py-1">
-                      <SeverityTag severity={a.severity} showLabel={false} pulse />
-                      <span className="min-w-0 flex-1 truncate text-[11px]">{a.message}</span>
-                      <Mono className="text-[11px]">T+{a.tick}</Mono>
-                      <button
-                        onClick={() => {
-                          if (!canOperate(role)) {
-                            toast.error("Read-only role");
-                            return;
-                          }
-                          simStore.ackAlert(a.id, userName);
-                          toast.success("Acknowledged");
-                        }}
-                        className="border border-border px-1 font-mono text-[11px] hover:bg-raised doip-btn-primary"
+                  .map((a) => {
+                    const elapsed = world.tick - a.tick;
+                    const isAging = elapsed >= 10;
+                    return (
+                      <li
+                        key={a.id}
+                        className="flex items-center gap-1.5 border-b border-border/60 px-2 py-1"
                       >
-                        ACK <span className="text-muted-foreground">[A]</span>
-                      </button>
-                    </li>
-                  ))}
+                        <SeverityTag severity={a.severity} showLabel={false} pulse />
+                        <span className="min-w-0 flex-1 truncate text-[11px]">{a.message}</span>
+                        {isAging && (
+                          <span className="font-mono text-[9px] px-1 bg-amber-950/40 border border-amber-500/40 text-amber-400 shrink-0">
+                            +{elapsed}t
+                          </span>
+                        )}
+                        <Mono className="text-[11px]">T+{a.tick}</Mono>
+                        <button
+                          onClick={() => {
+                            if (!canOperate(role)) {
+                              toast.error("Read-only role");
+                              return;
+                            }
+                            simStore.ackAlert(a.id, userName);
+                            toast.success("Acknowledged");
+                          }}
+                          className="border border-border px-1 font-mono text-[11px] hover:bg-raised doip-btn-primary"
+                        >
+                          ACK <span className="text-muted-foreground">[A]</span>
+                        </button>
+                      </li>
+                    );
+                  })}
               </ul>
             )}
           </div>
@@ -209,7 +262,10 @@ function DashboardScreen() {
           </header>
           <ul className="min-h-0 flex-1 overflow-y-auto">
             {recent.map((e) => (
-              <li key={e.id} className="flex items-center gap-1.5 px-2 py-0.5 font-mono text-[11px]">
+              <li
+                key={e.id}
+                className="flex items-center gap-1.5 px-2 py-0.5 font-mono text-[11px]"
+              >
                 <span className="text-muted-foreground">{formatSimClock(e.tick)}</span>
                 <SeverityTag severity={e.severity} showLabel={false} />
                 <span className="text-mono truncate">{e.type}</span>

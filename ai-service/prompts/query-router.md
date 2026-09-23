@@ -20,7 +20,11 @@ Classify an operator question into exactly one route. Output JSON only.
 ## Output
 
 ```json
-{"route": "doctrine|live_state|hybrid|refuse", "reason": "<one sentence>", "sql_intent": "<only for live_state/hybrid: what to query, in words>"}
+{
+  "route": "doctrine|live_state|hybrid|refuse",
+  "reason": "<one sentence>",
+  "sql_intent": "<only for live_state/hybrid: what to query, in words>"
+}
 ```
 
 ## Rules

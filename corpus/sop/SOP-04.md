@@ -7,7 +7,7 @@ version: 1.0
 
 # SOP-04 — Convoy Escort Procedures
 
-*Simulated training document. Not real doctrine.*
+_Simulated training document. Not real doctrine._
 
 ## 1. Composition
 

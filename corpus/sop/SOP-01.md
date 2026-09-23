@@ -7,7 +7,7 @@ version: 1.0
 
 # SOP-01 — Patrol Operations & Contact Reporting
 
-*Simulated training document. Not real doctrine.*
+_Simulated training document. Not real doctrine._
 
 ## 1. Patrol conduct
 

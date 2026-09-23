@@ -12,7 +12,6 @@ export function mulberry32(seed: number) {
 
 export type Rand = () => number;
 
-export const pick = <T,>(rand: Rand, arr: readonly T[]): T =>
-  arr[Math.floor(rand() * arr.length)]!;
+export const pick = <T>(rand: Rand, arr: readonly T[]): T => arr[Math.floor(rand() * arr.length)]!;
 
 export const between = (rand: Rand, a: number, b: number) => a + rand() * (b - a);

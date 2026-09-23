@@ -19,15 +19,15 @@ localhost; to point elsewhere set `VITE_DOIP_API_URL` (see `.env.example`).
 
 ## What it does
 
-| Endpoint | Purpose |
-|---|---|
-| `GET /health` | Liveness probe |
-| `POST /auth/login` | Demo HMAC token for a role (`admin/planner/operator/viewer`) |
-| `GET /scenarios` | Scenario catalogue (mirror of `src/sim/scenarios.ts`) |
-| `POST /runs` | Persist a recorded run incl. full event log (Bearer token) |
-| `GET /runs` | Last 8 persisted runs — hydrates the frontend run list on login |
-| `GET /audit` | Append-only audit trail (admin token only) |
-| `WS /ws/warroom` | Shared war-room task board — tasks sync live across browsers |
+| Endpoint           | Purpose                                                         |
+| ------------------ | --------------------------------------------------------------- |
+| `GET /health`      | Liveness probe                                                  |
+| `POST /auth/login` | Demo HMAC token for a role (`admin/planner/operator/viewer`)    |
+| `GET /scenarios`   | Scenario catalogue (mirror of `src/sim/scenarios.ts`)           |
+| `POST /runs`       | Persist a recorded run incl. full event log (Bearer token)      |
+| `GET /runs`        | Last 8 persisted runs — hydrates the frontend run list on login |
+| `GET /audit`       | Append-only audit trail (admin token only)                      |
+| `WS /ws/warroom`   | Shared war-room task board — tasks sync live across browsers    |
 
 ## Frontend wiring (fail-soft by design)
 

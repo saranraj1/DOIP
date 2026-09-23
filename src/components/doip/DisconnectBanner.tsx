@@ -13,10 +13,7 @@ export function DisconnectBanner() {
   return (
     <div
       aria-live="assertive"
-      className={cn(
-        "overflow-hidden transition-all duration-300",
-        show ? "max-h-8" : "max-h-0",
-      )}
+      className={cn("overflow-hidden transition-all duration-300", show ? "max-h-8" : "max-h-0")}
     >
       {show && (
         <div className="flex items-center gap-2 bg-sev-medium/10 px-3 py-1 font-mono text-[10px] text-sev-medium">

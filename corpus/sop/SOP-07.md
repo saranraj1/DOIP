@@ -7,7 +7,7 @@ version: 1.0
 
 # SOP-07 — Base Perimeter Defense
 
-*Simulated training document. Not real doctrine.*
+_Simulated training document. Not real doctrine._
 
 ## 1. Sensor coverage
 

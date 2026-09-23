@@ -7,7 +7,7 @@ import { formatSimClock, canOperate } from "@/lib/doip";
 import { mulberry32 } from "@/sim/prng";
 import { taskStore, useTasks, type TaskStatus } from "@/sim/tasks";
 import { cn } from "@/lib/utils";
-import { Send, Pin, Plus } from "lucide-react";
+import { Send, Pin, Plus, AlertTriangle, CheckCircle2, ShieldAlert } from "lucide-react";
 
 export const Route = createFileRoute("/warroom")({
   head: () => ({
@@ -15,10 +15,14 @@ export const Route = createFileRoute("/warroom")({
       { title: "War-Room — DOIP" },
       {
         name: "description",
-        content: "Shared tactical picture with live participant cursors, a sector-scoped task board, pinned items and a decision log.",
+        content:
+          "Shared tactical picture with live participant cursors, a sector-scoped task board, pinned items and a decision log.",
       },
       { property: "og:title", content: "War-Room — DOIP" },
-      { property: "og:description", content: "Collaborative command surface for the exercise staff." },
+      {
+        property: "og:description",
+        content: "Collaborative command surface for the exercise staff.",
+      },
     ],
   }),
   component: WarRoomScreen,
@@ -94,16 +98,66 @@ function WarRoomScreen() {
     [world.incidents],
   );
 
-  const incidentSector = (entityId: string) => world.units[entityId]?.sector ?? "—";
-
   const visibleIncidents = useMemo(
     () =>
       sectorFilter === "ALL"
         ? openIncidents
-        : openIncidents.filter((i) => incidentSector(i.entityId) === sectorFilter),
+        : openIncidents.filter((i) => (world.units[i.entityId]?.sector ?? "—") === sectorFilter),
     [openIncidents, sectorFilter, world.units],
   );
-  const visibleTasks = sectorFilter === "ALL" ? tasks : tasks.filter((t) => t.sector === sectorFilter);
+  const visibleTasks =
+    sectorFilter === "ALL" ? tasks : tasks.filter((t) => t.sector === sectorFilter);
+
+  const ccirItems = useMemo(() => {
+    const units = Object.values(world.units);
+    const minFuel = units.length > 0 ? Math.min(...units.map((u) => u.fuel)) : 100;
+    const staleUnits = units.filter((u) => u.status === "stale" || world.tick - u.lastSeenTick > 6);
+    const weatherList = Object.values(world.weather);
+    const maxWeather =
+      weatherList.length > 0 ? Math.max(...weatherList.map((w) => w.intensity)) : 0;
+
+    return [
+      {
+        id: "ccir-1",
+        code: "CCIR-1",
+        title: "Fleet Fuel Reserve > 30%",
+        status:
+          minFuel < 30
+            ? ("UNMET" as const)
+            : minFuel < 50
+              ? ("MONITORED" as const)
+              : ("SATISFIED" as const),
+        metric: `Min Fuel: ${minFuel.toFixed(0)}%`,
+      },
+      {
+        id: "ccir-2",
+        code: "CCIR-2",
+        title: "Positive C2 Link (Active)",
+        status:
+          staleUnits.length > 0
+            ? ("UNMET" as const)
+            : units.some((u) => u.status === "slowed")
+              ? ("MONITORED" as const)
+              : ("SATISFIED" as const),
+        metric:
+          staleUnits.length === 0
+            ? "100% C2 Active"
+            : `${staleUnits.length} Link Drop${staleUnits.length > 1 ? "s" : ""}`,
+      },
+      {
+        id: "ccir-3",
+        code: "CCIR-3",
+        title: "Severe Weather Clearance",
+        status:
+          maxWeather >= 0.6
+            ? ("UNMET" as const)
+            : maxWeather >= 0.2
+              ? ("MONITORED" as const)
+              : ("SATISFIED" as const),
+        metric: `Peak Cell: ${(maxWeather * 100).toFixed(0)}%`,
+      },
+    ];
+  }, [world.units, world.weather, world.tick]);
 
   if (!Object.keys(world.units).length) {
     return (
@@ -117,9 +171,25 @@ function WarRoomScreen() {
     if (!draft.trim()) return;
     setMsgs((m) => [
       ...m,
-      { id: m.length + 1, author: userName || "You", color: "#FFFFFF", text: draft.trim(), tick: world.tick },
+      {
+        id: m.length + 1,
+        author: userName || "You",
+        color: "#FFFFFF",
+        text: draft.trim(),
+        tick: world.tick,
+      },
     ]);
     setDraft("");
+  };
+
+  const handleTaskDraftChange = (text: string) => {
+    setTaskDraft(text);
+    const lower = text.toLowerCase();
+    if (lower.includes("fuel") || lower.includes("supply") || lower.includes("medevac")) {
+      setTaskAssignee(PARTICIPANTS[2]!.name); // Operator
+    } else if (lower.includes("route") || lower.includes("plan") || lower.includes("corridor")) {
+      setTaskAssignee(PARTICIPANTS[1]!.name); // Planner
+    }
   };
 
   const addTask = () => {
@@ -134,192 +204,272 @@ function WarRoomScreen() {
   };
 
   return (
-    <div className="grid h-full gap-2 p-2 lg:grid-cols-[minmax(0,1fr)_340px]">
-      <div className="flex min-h-0 flex-col gap-2">
-        <Panel
-          title="Shared tactical picture"
-          actions={
+    <div className="flex h-full flex-col gap-2 p-2">
+      {/* CCIR Priority Board */}
+      <div className="grid shrink-0 grid-cols-1 gap-2 md:grid-cols-3">
+        {ccirItems.map((c) => (
+          <div
+            key={c.id}
+            className={cn(
+              "flex items-center justify-between border px-3 py-1.5 transition-colors",
+              c.status === "UNMET"
+                ? "border-sev-critical/60 bg-sev-critical/10 text-sev-critical"
+                : c.status === "MONITORED"
+                  ? "border-sev-medium/60 bg-sev-medium/10 text-sev-medium"
+                  : "border-success/60 bg-success/10 text-success",
+            )}
+          >
             <div className="flex items-center gap-2">
-              <select
-                value={sectorFilter}
-                onChange={(e) => setSectorFilter(e.target.value)}
-                className="border border-border bg-background px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-widest"
-                aria-label="Sector filter"
+              {c.status === "UNMET" ? (
+                <AlertTriangle className="size-3.5" />
+              ) : c.status === "MONITORED" ? (
+                <ShieldAlert className="size-3.5" />
+              ) : (
+                <CheckCircle2 className="size-3.5" />
+              )}
+              <div>
+                <span className="font-mono text-[9px] uppercase tracking-wider opacity-75">
+                  {c.code}
+                </span>
+                <p className="text-[11px] font-medium leading-tight text-foreground">{c.title}</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <span
+                className={cn(
+                  "font-mono text-[9px] font-bold uppercase tracking-widest",
+                  c.status === "UNMET"
+                    ? "text-sev-critical"
+                    : c.status === "MONITORED"
+                      ? "text-sev-medium"
+                      : "text-success",
+                )}
               >
-                <option value="ALL">ALL SECTORS</option>
+                {c.status}
+              </span>
+              <p className="font-mono text-[10px] text-muted-foreground">{c.metric}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid min-h-0 flex-1 gap-2 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="flex min-h-0 flex-col gap-2">
+          <Panel
+            title="Shared tactical picture"
+            actions={
+              <div className="flex items-center gap-2">
+                <select
+                  value={sectorFilter}
+                  onChange={(e) => setSectorFilter(e.target.value)}
+                  className="border border-border bg-background px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-widest"
+                  aria-label="Sector filter"
+                >
+                  <option value="ALL">ALL SECTORS</option>
+                  {sectors.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+                <div className="flex -space-x-1.5">
+                  {PARTICIPANTS.map((p) => (
+                    <span
+                      key={p.id}
+                      title={`${p.name} · ${p.role}`}
+                      className="flex size-5 items-center justify-center rounded-full border border-border font-mono text-[9px] text-background"
+                      style={{ backgroundColor: p.color }}
+                    >
+                      {p.name.split(" ").pop()!.slice(0, 1)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            }
+            bodyClassName="p-0 h-[420px]"
+          >
+            <MapView
+              units={Object.values(world.units)}
+              incidents={openIncidents}
+              weather={Object.values(world.weather)}
+              zones={world.zones}
+              tick={world.tick}
+              cursors={cursors}
+            />
+          </Panel>
+
+          <Panel
+            title={`Task board · ${sectorFilter === "ALL" ? "all sectors" : sectorFilter}`}
+            actions={
+              <Mono className="text-[10px] text-muted-foreground">
+                {visibleTasks.filter((t) => t.status !== "done").length} OPEN ·{" "}
+                {visibleTasks.length} TOTAL
+              </Mono>
+            }
+          >
+            <div className="flex flex-wrap gap-1.5">
+              <input
+                value={taskDraft}
+                onChange={(e) => handleTaskDraftChange(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && addTask()}
+                disabled={!canOperate(role)}
+                placeholder={canOperate(role) ? "New task…" : "Read-only role"}
+                className="min-w-0 flex-1 border border-border bg-base px-2 py-1 text-xs outline-none focus:border-primary/60"
+              />
+              <select
+                value={taskAssignee}
+                onChange={(e) => setTaskAssignee(e.target.value)}
+                disabled={!canOperate(role)}
+                className="border border-border bg-background px-1.5 py-1 font-mono text-[10px]"
+                aria-label="Assignee"
+              >
+                {PARTICIPANTS.map((p) => (
+                  <option key={p.id} value={p.name}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={taskSector}
+                onChange={(e) => setTaskSector(e.target.value)}
+                disabled={!canOperate(role)}
+                className="border border-border bg-background px-1.5 py-1 font-mono text-[10px]"
+                aria-label="Sector"
+              >
                 {sectors.map((s) => (
                   <option key={s} value={s}>
                     {s}
                   </option>
                 ))}
               </select>
-              <div className="flex -space-x-1.5">
-                {PARTICIPANTS.map((p) => (
-                  <span
-                    key={p.id}
-                    title={`${p.name} · ${p.role}`}
-                    className="flex size-5 items-center justify-center rounded-full border border-border font-mono text-[9px] text-background"
-                    style={{ backgroundColor: p.color }}
-                  >
-                    {p.name.split(" ").pop()!.slice(0, 1)}
-                  </span>
-                ))}
-              </div>
+              <button
+                onClick={addTask}
+                disabled={!canOperate(role)}
+                className="flex items-center gap-1 bg-primary px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-primary-foreground disabled:opacity-40"
+              >
+                <Plus className="size-3" /> Add
+              </button>
             </div>
-          }
-          bodyClassName="p-0 h-[420px]"
-        >
-          <MapView
-            units={Object.values(world.units)}
-            incidents={openIncidents}
-            weather={Object.values(world.weather)}
-            zones={world.zones}
-            tick={world.tick}
-            cursors={cursors}
-          />
-        </Panel>
-
-        <Panel
-          title={`Task board · ${sectorFilter === "ALL" ? "all sectors" : sectorFilter}`}
-          actions={
-            <Mono className="text-[10px] text-muted-foreground">
-              {visibleTasks.filter((t) => t.status !== "done").length} OPEN · {visibleTasks.length} TOTAL
-            </Mono>
-          }
-        >
-          <div className="flex flex-wrap gap-1.5">
-            <input
-              value={taskDraft}
-              onChange={(e) => setTaskDraft(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && addTask()}
-              disabled={!canOperate(role)}
-              placeholder={canOperate(role) ? "New task…" : "Read-only role"}
-              className="min-w-0 flex-1 border border-border bg-base px-2 py-1 text-xs outline-none focus:border-primary/60"
-            />
-            <select
-              value={taskAssignee}
-              onChange={(e) => setTaskAssignee(e.target.value)}
-              disabled={!canOperate(role)}
-              className="border border-border bg-background px-1.5 py-1 font-mono text-[10px]"
-              aria-label="Assignee"
-            >
-              {PARTICIPANTS.map((p) => (
-                <option key={p.id} value={p.name}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-            <select
-              value={taskSector}
-              onChange={(e) => setTaskSector(e.target.value)}
-              disabled={!canOperate(role)}
-              className="border border-border bg-background px-1.5 py-1 font-mono text-[10px]"
-              aria-label="Sector"
-            >
-              {sectors.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-            <button
-              onClick={addTask}
-              disabled={!canOperate(role)}
-              className="flex items-center gap-1 bg-primary px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-primary-foreground disabled:opacity-40"
-            >
-              <Plus className="size-3" /> Add
-            </button>
-          </div>
-          <ul className="mt-2 max-h-36 space-y-1 overflow-y-auto">
-            {visibleTasks
-              .slice()
-              .reverse()
-              .map((t) => (
-                <li key={t.id} className="flex items-center gap-2 border border-border p-1.5">
-                  <button
-                    onClick={() => canOperate(role) && taskStore.advance(t.id)}
-                    className={cn("border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest", STATUS_STYLE[t.status])}
-                    title="Click to advance status"
-                  >
-                    {t.status}
-                  </button>
-                  <span className={cn("min-w-0 flex-1 truncate text-[11px]", t.status === "done" && "text-muted-foreground line-through")}>
-                    {t.text}
-                  </span>
-                  <Mono className="text-[9px] text-muted-foreground">
-                    {t.assignee.split(" ").pop()} · {t.sector}
-                  </Mono>
-                </li>
-              ))}
-            {!visibleTasks.length && (
-              <EmptyState label="No tasks" hint={sectorFilter === "ALL" ? "Add the first task above." : "No tasks in this sector."} />
-            )}
-          </ul>
-        </Panel>
-      </div>
-
-      <div className="flex min-h-0 flex-col gap-2">
-        <Panel title={`Pinned items · ${sectorFilter === "ALL" ? "all sectors" : sectorFilter}`} bodyClassName="p-2">
-          {visibleIncidents.length === 0 ? (
-            <EmptyState label="Nothing to pin" hint={sectorFilter === "ALL" ? undefined : "No open incidents in this sector."} />
-          ) : (
-            <ul className="max-h-40 space-y-1 overflow-y-auto">
-              {visibleIncidents.slice(0, 8).map((i) => (
-                <li key={i.id} className="flex items-center gap-2 border border-border p-1.5">
-                  <SeverityTag severity={i.severity} showLabel={false} />
-                  <span className="min-w-0 flex-1 truncate font-mono text-[10px]">
-                    {i.kind} · {i.entityId} · {incidentSector(i.entityId)}
-                  </span>
-                  <button
-                    onClick={() => setPins((p) => (p.includes(i.id) ? p.filter((x) => x !== i.id) : [...p, i.id]))}
-                    className=" border border-border px-1.5 py-0.5"
-                    aria-label="Pin incident"
-                  >
-                    <Pin
-                      className="size-3"
-                      style={{ color: pins.includes(i.id) ? "#FFFFFF" : undefined }}
-                    />
-                  </button>
-                </li>
-              ))}
+            <ul className="mt-2 max-h-36 space-y-1 overflow-y-auto">
+              {visibleTasks
+                .slice()
+                .reverse()
+                .map((t) => (
+                  <li key={t.id} className="flex items-center gap-2 border border-border p-1.5">
+                    <button
+                      onClick={() => canOperate(role) && taskStore.advance(t.id)}
+                      className={cn(
+                        "border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest",
+                        STATUS_STYLE[t.status],
+                      )}
+                      title="Click to advance status"
+                    >
+                      {t.status}
+                    </button>
+                    <span
+                      className={cn(
+                        "min-w-0 flex-1 truncate text-[11px]",
+                        t.status === "done" && "text-muted-foreground line-through",
+                      )}
+                    >
+                      {t.text}
+                    </span>
+                    <Mono className="text-[9px] text-muted-foreground">
+                      {t.assignee.split(" ").pop()} · {t.sector}
+                    </Mono>
+                  </li>
+                ))}
+              {!visibleTasks.length && (
+                <EmptyState
+                  label="No tasks"
+                  hint={
+                    sectorFilter === "ALL"
+                      ? "Add the first task above."
+                      : "No tasks in this sector."
+                  }
+                />
+              )}
             </ul>
-          )}
-        </Panel>
+          </Panel>
+        </div>
 
-        <Panel title="Decision log" bodyClassName="flex min-h-0 flex-1 flex-col p-2">
-          <ul className="min-h-0 flex-1 space-y-1.5 overflow-y-auto">
-            {msgs.map((m) => (
-              <li key={m.id} className=" border border-border p-1.5">
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-[10px]" style={{ color: m.color }}>
-                    {m.author}
-                  </span>
-                  <Mono className="ml-auto text-[10px] text-muted-foreground">{formatSimClock(m.tick)}</Mono>
-                </div>
-                <p className="mt-0.5 text-[12px] text-foreground">{m.text}</p>
-              </li>
-            ))}
-            {!msgs.length && <EmptyState label="No entries" hint="Log decisions so the AAR has context." />}
-          </ul>
-          <div className="mt-2 flex gap-1.5">
-            <input
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && send()}
-              disabled={!canOperate(role)}
-              placeholder={canOperate(role) ? "Record a decision…" : "Read-only role"}
-              className="min-w-0 flex-1 border border-border bg-base px-2 py-1.5 text-xs outline-none focus:border-primary/60"
-            />
-            <button
-              onClick={send}
-              disabled={!canOperate(role)}
-              className=" bg-primary px-2.5 text-primary-foreground disabled:opacity-40"
-              aria-label="Send"
-            >
-              <Send className="size-3.5" />
-            </button>
-          </div>
-        </Panel>
+        <div className="flex min-h-0 flex-col gap-2">
+          <Panel
+            title={`Pinned items · ${sectorFilter === "ALL" ? "all sectors" : sectorFilter}`}
+            bodyClassName="p-2"
+          >
+            {visibleIncidents.length === 0 ? (
+              <EmptyState
+                label="Nothing to pin"
+                {...(sectorFilter !== "ALL" ? { hint: "No open incidents in this sector." } : {})}
+              />
+            ) : (
+              <ul className="max-h-40 space-y-1 overflow-y-auto">
+                {visibleIncidents.slice(0, 8).map((i) => (
+                  <li key={i.id} className="flex items-center gap-2 border border-border p-1.5">
+                    <SeverityTag severity={i.severity} showLabel={false} />
+                    <span className="min-w-0 flex-1 truncate font-mono text-[10px]">
+                      {i.kind} · {i.entityId} · {incidentSector(i.entityId)}
+                    </span>
+                    <button
+                      onClick={() =>
+                        setPins((p) =>
+                          p.includes(i.id) ? p.filter((x) => x !== i.id) : [...p, i.id],
+                        )
+                      }
+                      className=" border border-border px-1.5 py-0.5"
+                      aria-label="Pin incident"
+                    >
+                      <Pin
+                        className="size-3"
+                        style={{ color: pins.includes(i.id) ? "#FFFFFF" : undefined }}
+                      />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Panel>
+
+          <Panel title="Decision log" bodyClassName="flex min-h-0 flex-1 flex-col p-2">
+            <ul className="min-h-0 flex-1 space-y-1.5 overflow-y-auto">
+              {msgs.map((m) => (
+                <li key={m.id} className=" border border-border p-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-[10px]" style={{ color: m.color }}>
+                      {m.author}
+                    </span>
+                    <Mono className="ml-auto text-[10px] text-muted-foreground">
+                      {formatSimClock(m.tick)}
+                    </Mono>
+                  </div>
+                  <p className="mt-0.5 text-[12px] text-foreground">{m.text}</p>
+                </li>
+              ))}
+              {!msgs.length && (
+                <EmptyState label="No entries" hint="Log decisions so the AAR has context." />
+              )}
+            </ul>
+            <div className="mt-2 flex gap-1.5">
+              <input
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && send()}
+                disabled={!canOperate(role)}
+                placeholder={canOperate(role) ? "Record a decision…" : "Read-only role"}
+                className="min-w-0 flex-1 border border-border bg-base px-2 py-1.5 text-xs outline-none focus:border-primary/60"
+              />
+              <button
+                onClick={send}
+                disabled={!canOperate(role)}
+                className=" bg-primary px-2.5 text-primary-foreground disabled:opacity-40"
+                aria-label="Send"
+              >
+                <Send className="size-3.5" />
+              </button>
+            </div>
+          </Panel>
+        </div>
       </div>
     </div>
   );

@@ -7,21 +7,21 @@ version: 1.0
 
 # REF-04 — Escalation Matrix
 
-*Simulated training reference.*
+_Simulated training reference._
 
 ## Who is notified, when
 
-| Trigger | Operator | Planner | Commander | Action reference |
-|---|---|---|---|---|
-| Medium alert | feed/badge | — | — | monitor |
-| High alert | notify + ack required | — | — | SOP per event type |
-| Critical alert | notify + ack required | notified | notify + banner | immediate |
-| Stage-3 comms loss | ack required | — | — | SOP-06, QRF readiness |
-| Stage-4 comms loss | ack required | notified | notified | SOP-06 search plan |
-| Confirmed perimeter event | ack required | — | posture Amber+ notified | SOP-07 |
-| Convoy > 45 min late | ack required | notified | — | SOP-04 §5 |
-| Urgent CASEVAC | ack required | — | notified | SOP-03 |
-| Hostile-behavior air track | ack required | notified | notify + banner | SOP-05 |
+| Trigger                    | Operator              | Planner  | Commander               | Action reference      |
+| -------------------------- | --------------------- | -------- | ----------------------- | --------------------- |
+| Medium alert               | feed/badge            | —        | —                       | monitor               |
+| High alert                 | notify + ack required | —        | —                       | SOP per event type    |
+| Critical alert             | notify + ack required | notified | notify + banner         | immediate             |
+| Stage-3 comms loss         | ack required          | —        | —                       | SOP-06, QRF readiness |
+| Stage-4 comms loss         | ack required          | notified | notified                | SOP-06 search plan    |
+| Confirmed perimeter event  | ack required          | —        | posture Amber+ notified | SOP-07                |
+| Convoy > 45 min late       | ack required          | notified | —                       | SOP-04 §5             |
+| Urgent CASEVAC             | ack required          | —        | notified                | SOP-03                |
+| Hostile-behavior air track | ack required          | notified | notify + banner         | SOP-05                |
 
 ## Alternate designation
 

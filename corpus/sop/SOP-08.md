@@ -7,7 +7,7 @@ version: 1.0
 
 # SOP-08 — HADR Deployment
 
-*Simulated training document. Not real doctrine.*
+_Simulated training document. Not real doctrine._
 
 HADR is a military mission class: the same units, logistics chains, and command procedures as other operations, applied to disaster response (see scenario SC-8).
 
