@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { MapView } from "@/components/map/MapView";
 import { EmptyState, Panel, Mono, SeverityTag } from "@/components/doip/primitives";
@@ -98,12 +98,17 @@ function WarRoomScreen() {
     [world.incidents],
   );
 
+  const incidentSector = useCallback(
+    (entityId: string) => world.units[entityId]?.sector ?? "—",
+    [world.units],
+  );
+
   const visibleIncidents = useMemo(
     () =>
       sectorFilter === "ALL"
         ? openIncidents
-        : openIncidents.filter((i) => (world.units[i.entityId]?.sector ?? "—") === sectorFilter),
-    [openIncidents, sectorFilter, world.units],
+        : openIncidents.filter((i) => incidentSector(i.entityId) === sectorFilter),
+    [openIncidents, sectorFilter, incidentSector],
   );
   const visibleTasks =
     sectorFilter === "ALL" ? tasks : tasks.filter((t) => t.sector === sectorFilter);
