@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { MapView } from "@/components/map/MapView";
 import { EmptyState, Panel, Mono, SeverityTag } from "@/components/doip/primitives";
@@ -7,7 +7,8 @@ import { formatSimClock, canOperate } from "@/lib/doip";
 import { mulberry32 } from "@/sim/prng";
 import { taskStore, useTasks, type TaskStatus } from "@/sim/tasks";
 import { cn } from "@/lib/utils";
-import { Send, Pin, Plus, AlertTriangle, CheckCircle2, ShieldAlert } from "lucide-react";
+import { Send, Pin, Plus, AlertTriangle, CheckCircle2, ShieldAlert, Trash2, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/warroom")({
   head: () => ({
@@ -35,6 +36,12 @@ const PARTICIPANTS = [
   { id: "p4", name: "Obs. L. Fernandes", color: "#A78BFA", role: "viewer" },
 ];
 
+const TASK_PRESETS = [
+  { text: "Sector Recon Patrol", assignee: "Maj. R. Sethi" },
+  { text: "Fuel Depot Resupply", assignee: "Sgt. P. Kulkarni" },
+  { text: "Air Defense Radar Check", assignee: "Col. A. Verma" },
+];
+
 interface Msg {
   id: number;
   author: string;
@@ -60,6 +67,9 @@ function WarRoomScreen() {
   const [pins, setPins] = useState<string[]>([]);
   const [phase, setPhase] = useState(0);
 
+  const inputRef = useRef<HTMLInputElement>(null);
+  const decisionRef = useRef<HTMLInputElement>(null);
+
   const sectors = useMemo(() => {
     const s = new Set<string>();
     Object.values(world.units).forEach((u) => u.sector && s.add(u.sector));
@@ -71,6 +81,13 @@ function WarRoomScreen() {
   const [taskAssignee, setTaskAssignee] = useState(PARTICIPANTS[2]!.name);
   const [taskSector, setTaskSector] = useState("");
   const [sectorFilter, setSectorFilter] = useState("ALL");
+
+  // Keep taskSector aligned with valid sectors
+  useEffect(() => {
+    if (sectors.length > 0 && (!taskSector || !sectors.includes(taskSector))) {
+      setTaskSector(sectorFilter !== "ALL" && sectors.includes(sectorFilter) ? sectorFilter : sectors[0]!);
+    }
+  }, [sectors, taskSector, sectorFilter]);
 
   useEffect(() => {
     const t = setInterval(() => setPhase((p) => p + 1), 1000);
@@ -172,19 +189,41 @@ function WarRoomScreen() {
     );
   }
 
-  const send = () => {
-    if (!draft.trim()) return;
+  const handleSectorFilterChange = (filter: string) => {
+    setSectorFilter(filter);
+    if (filter !== "ALL" && sectors.includes(filter)) {
+      setTaskSector(filter);
+    }
+  };
+
+  const send = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!canOperate(role)) {
+      toast.error("Read-only role", {
+        description: "Recording decisions requires Operator, Planner, or Admin role.",
+      });
+      return;
+    }
+    const trimmed = draft.trim();
+    if (!trimmed) {
+      toast.warning("Empty decision", {
+        description: "Please enter decision text to log.",
+      });
+      decisionRef.current?.focus();
+      return;
+    }
     setMsgs((m) => [
       ...m,
       {
         id: m.length + 1,
         author: userName || "You",
         color: "#FFFFFF",
-        text: draft.trim(),
+        text: trimmed,
         tick: world.tick,
       },
     ]);
     setDraft("");
+    toast.success("Decision recorded to AAR audit log");
   };
 
   const handleTaskDraftChange = (text: string) => {
@@ -197,15 +236,55 @@ function WarRoomScreen() {
     }
   };
 
-  const addTask = () => {
-    if (!taskDraft.trim() || !canOperate(role)) return;
-    taskStore.add({
-      text: taskDraft.trim(),
-      assignee: taskAssignee,
-      sector: taskSector || sectors[0] || "—",
+  const applyPreset = (preset: { text: string; assignee: string }) => {
+    if (!canOperate(role)) {
+      toast.error("Read-only role", {
+        description: "Task assignment requires Operator, Planner, or Admin access.",
+      });
+      return;
+    }
+    setTaskDraft(preset.text);
+    setTaskAssignee(preset.assignee);
+    inputRef.current?.focus();
+    toast.info(`Template loaded: "${preset.text}"`);
+  };
+
+  const addTask = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!canOperate(role)) {
+      toast.error("Read-only role", {
+        description: "Task assignment requires Operator, Planner, or Admin role.",
+      });
+      return;
+    }
+    const trimmed = taskDraft.trim();
+    if (!trimmed) {
+      toast.warning("Task description required", {
+        description: "Please enter a task description in the box or select a quick template.",
+      });
+      inputRef.current?.focus();
+      return;
+    }
+
+    const chosenSector = taskSector || (sectorFilter !== "ALL" ? sectorFilter : sectors[0]) || "ALPHA";
+    const created = taskStore.add({
+      text: trimmed,
+      assignee: taskAssignee || PARTICIPANTS[2]!.name,
+      sector: chosenSector,
       tick: world.tick,
     });
     setTaskDraft("");
+
+    if (sectorFilter !== "ALL" && sectorFilter !== chosenSector) {
+      setSectorFilter("ALL");
+      toast.success(`Task created: "${created.text}"`, {
+        description: `Sector filter changed to ALL to display task in Sector ${chosenSector}.`,
+      });
+    } else {
+      toast.success(`Task created: "${created.text}"`, {
+        description: `Assigned to ${created.assignee} · Sector ${chosenSector}`,
+      });
+    }
   };
 
   return (
@@ -266,7 +345,7 @@ function WarRoomScreen() {
               <div className="flex items-center gap-2">
                 <select
                   value={sectorFilter}
-                  onChange={(e) => setSectorFilter(e.target.value)}
+                  onChange={(e) => handleSectorFilterChange(e.target.value)}
                   className="border border-border bg-background px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-widest"
                   aria-label="Sector filter"
                 >
@@ -312,69 +391,96 @@ function WarRoomScreen() {
               </Mono>
             }
           >
-            <div className="flex flex-wrap gap-1.5">
-              <input
-                value={taskDraft}
-                onChange={(e) => handleTaskDraftChange(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addTask()}
-                disabled={!canOperate(role)}
-                placeholder={canOperate(role) ? "New task…" : "Read-only role"}
-                className="min-w-0 flex-1 border border-border bg-base px-2 py-1 text-xs outline-none focus:border-primary/60"
-              />
-              <select
-                value={taskAssignee}
-                onChange={(e) => setTaskAssignee(e.target.value)}
-                disabled={!canOperate(role)}
-                className="border border-border bg-background px-1.5 py-1 font-mono text-[10px]"
-                aria-label="Assignee"
-              >
-                {PARTICIPANTS.map((p) => (
-                  <option key={p.id} value={p.name}>
-                    {p.name}
-                  </option>
+            <form onSubmit={addTask} className="space-y-1.5">
+              <div className="flex flex-wrap gap-1.5">
+                <input
+                  ref={inputRef}
+                  value={taskDraft}
+                  onChange={(e) => handleTaskDraftChange(e.target.value)}
+                  placeholder={canOperate(role) ? "Enter new tactical task (e.g. Recon patrol)…" : "Read-only role (viewing only)"}
+                  className="min-w-0 flex-1 border border-border bg-base px-2 py-1 text-xs outline-none focus:border-primary/60"
+                />
+                <select
+                  value={taskAssignee}
+                  onChange={(e) => setTaskAssignee(e.target.value)}
+                  disabled={!canOperate(role)}
+                  className="border border-border bg-background px-1.5 py-1 font-mono text-[10px]"
+                  aria-label="Assignee"
+                >
+                  {PARTICIPANTS.map((p) => (
+                    <option key={p.id} value={p.name}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={taskSector || (sectors[0] ?? "")}
+                  onChange={(e) => setTaskSector(e.target.value)}
+                  disabled={!canOperate(role)}
+                  className="border border-border bg-background px-1.5 py-1 font-mono text-[10px]"
+                  aria-label="Sector"
+                >
+                  {sectors.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="submit"
+                  className="flex items-center gap-1 bg-primary px-3 py-1 font-mono text-[10px] uppercase tracking-widest text-primary-foreground hover:bg-primary/90 active:scale-95 transition-all cursor-pointer shadow-sm"
+                  title={canOperate(role) ? "Add tactical task (Enter)" : "Read-only role"}
+                >
+                  <Plus className="size-3" /> Add
+                </button>
+              </div>
+
+              {/* Quick Template Chips */}
+              <div className="flex items-center gap-1.5 pt-0.5">
+                <span className="font-mono text-[9px] text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                  <Sparkles className="size-2.5 text-primary" /> Quick:
+                </span>
+                {TASK_PRESETS.map((p, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => applyPreset(p)}
+                    className="border border-border bg-surface hover:bg-accent/40 px-1.5 py-0.5 font-mono text-[9px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  >
+                    + {p.text.split(" ")[0]} {p.text.split(" ")[1] ?? ""}
+                  </button>
                 ))}
-              </select>
-              <select
-                value={taskSector}
-                onChange={(e) => setTaskSector(e.target.value)}
-                disabled={!canOperate(role)}
-                className="border border-border bg-background px-1.5 py-1 font-mono text-[10px]"
-                aria-label="Sector"
-              >
-                {sectors.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-              <button
-                onClick={addTask}
-                disabled={!canOperate(role)}
-                className="flex items-center gap-1 bg-primary px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-primary-foreground disabled:opacity-40"
-              >
-                <Plus className="size-3" /> Add
-              </button>
-            </div>
-            <ul className="mt-2 max-h-36 space-y-1 overflow-y-auto">
+              </div>
+            </form>
+
+            <ul className="mt-2 max-h-48 space-y-1 overflow-y-auto">
               {visibleTasks
                 .slice()
                 .reverse()
                 .map((t) => (
-                  <li key={t.id} className="flex items-center gap-2 border border-border p-1.5">
+                  <li key={t.id} className="flex items-center gap-2 border border-border p-1.5 bg-surface/30">
                     <button
-                      onClick={() => canOperate(role) && taskStore.advance(t.id)}
+                      type="button"
+                      onClick={() => {
+                        if (!canOperate(role)) {
+                          toast.error("Read-only role", { description: "Cannot change task status." });
+                          return;
+                        }
+                        taskStore.advance(t.id);
+                        toast.info(`Task status updated: "${t.text}"`);
+                      }}
                       className={cn(
-                        "border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest",
+                        "border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest cursor-pointer transition-colors",
                         STATUS_STYLE[t.status],
                       )}
-                      title="Click to advance status"
+                      title="Click to advance status (open → doing → done)"
                     >
                       {t.status}
                     </button>
                     <span
                       className={cn(
                         "min-w-0 flex-1 truncate text-[11px]",
-                        t.status === "done" && "text-muted-foreground line-through",
+                        t.status === "done" && "text-muted-foreground line-through opacity-70",
                       )}
                     >
                       {t.text}
@@ -382,6 +488,19 @@ function WarRoomScreen() {
                     <Mono className="text-[9px] text-muted-foreground">
                       {t.assignee.split(" ").pop()} · {t.sector}
                     </Mono>
+                    {canOperate(role) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          taskStore.delete(t.id);
+                          toast.info(`Task removed from board`);
+                        }}
+                        className="text-muted-foreground/50 hover:text-sev-critical p-0.5 transition-colors cursor-pointer"
+                        title="Delete task"
+                      >
+                        <Trash2 className="size-3" />
+                      </button>
+                    )}
                   </li>
                 ))}
               {!visibleTasks.length && (
@@ -389,7 +508,7 @@ function WarRoomScreen() {
                   label="No tasks"
                   hint={
                     sectorFilter === "ALL"
-                      ? "Add the first task above."
+                      ? "Add the first task above or select a quick template."
                       : "No tasks in this sector."
                   }
                 />
@@ -455,24 +574,23 @@ function WarRoomScreen() {
                 <EmptyState label="No entries" hint="Log decisions so the AAR has context." />
               )}
             </ul>
-            <div className="mt-2 flex gap-1.5">
+            <form onSubmit={send} className="mt-2 flex gap-1.5">
               <input
+                ref={decisionRef}
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && send()}
-                disabled={!canOperate(role)}
                 placeholder={canOperate(role) ? "Record a decision…" : "Read-only role"}
                 className="min-w-0 flex-1 border border-border bg-base px-2 py-1.5 text-xs outline-none focus:border-primary/60"
               />
               <button
-                onClick={send}
-                disabled={!canOperate(role)}
-                className=" bg-primary px-2.5 text-primary-foreground disabled:opacity-40"
+                type="submit"
+                className="bg-primary px-2.5 text-primary-foreground hover:bg-primary/90 active:scale-95 transition-all cursor-pointer shadow-sm disabled:opacity-40"
                 aria-label="Send"
+                title="Log decision"
               >
                 <Send className="size-3.5" />
               </button>
-            </div>
+            </form>
           </Panel>
         </div>
       </div>

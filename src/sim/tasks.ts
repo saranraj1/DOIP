@@ -34,7 +34,8 @@ let wsTried = false;
 type WireOp =
   | { type: "snapshot"; tasks: WarTask[] }
   | { type: "add"; task: WarTask }
-  | { type: "advance"; id: number };
+  | { type: "advance"; id: number }
+  | { type: "delete"; id: number };
 
 function ensureSocket() {
   if (wsTried || typeof window === "undefined") return;
@@ -55,6 +56,8 @@ function ensureSocket() {
           nextId = Math.max(nextId, op.task.id);
         } else if (op.type === "advance") {
           tasks = tasks.map((t) => (t.id === op.id ? { ...t, status: NEXT_STATUS[t.status] } : t));
+        } else if (op.type === "delete") {
+          tasks = tasks.filter((t) => t.id !== op.id);
         }
         emit();
       } catch {
@@ -88,6 +91,11 @@ export const taskStore = {
     tasks = tasks.map((t) => (t.id === id ? { ...t, status: NEXT_STATUS[t.status] } : t));
     emit();
     send({ type: "advance", id });
+  },
+  delete(id: number) {
+    tasks = tasks.filter((t) => t.id !== id);
+    emit();
+    send({ type: "delete", id });
   },
   subscribe(listener: () => void) {
     ensureSocket();
