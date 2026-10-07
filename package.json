@@ -4,6 +4,8 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
+    "start": "node scripts/start.js",
+    "dev:all": "node scripts/start.js",
     "dev": "vite dev",
     "build": "vite build",
     "build:dev": "vite build --mode development",

@@ -24,6 +24,33 @@ make run SCENARIO=scenarios/sc1_night_patrol.yaml SEED=42
 
 Open http://localhost:3000 — default dev login is `operator / operator` (dev only).
 
+## Single-Command Development Start
+
+To launch both the FastAPI backend (port 8000) and the Command Center frontend (port 8080) concurrently with unified streaming logs and graceful shutdown:
+
+### Using NPM / Node (Universal)
+```bash
+npm start
+# or: npm run dev:all
+```
+
+### Using Python
+```bash
+python start.py
+```
+
+### Windows 1-Click / PowerShell
+```powershell
+.\start.ps1
+# or double-click / run in Command Prompt:
+start.bat
+```
+
+Services started:
+- **Command Center UI:** [http://localhost:8080](http://localhost:8080)
+- **FastAPI Backend & Swagger:** [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+- **Backend Health Check:** [http://127.0.0.1:8000/health](http://127.0.0.1:8000/health)
+
 ## Repository layout
 
 ```
