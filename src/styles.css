@@ -637,3 +637,19 @@ button[data-variant="primary"]:disabled,
     32px 32px,
     32px 32px;
 }
+
+/* Suppress any third-party platform watermarks, badges, or overlays */
+[id*="lovable"],
+[class*="lovable"],
+[data-lovable],
+.lovable-badge,
+#lovable-badge,
+a[href*="lovable.dev"],
+button[id*="lovable"],
+div[id*="lovable"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+

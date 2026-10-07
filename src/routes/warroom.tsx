@@ -69,7 +69,6 @@ function WarRoomScreen() {
 
   const inputRef = useRef<HTMLInputElement>(null);
   const decisionRef = useRef<HTMLInputElement>(null);
-
   const sectors = useMemo(() => {
     const s = new Set<string>();
     Object.values(world.units).forEach((u) => u.sector && s.add(u.sector));

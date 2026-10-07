@@ -80,6 +80,7 @@ export function SideNav({
       aria-label="Primary"
     >
       <div className="flex h-11 items-center gap-2 border-b border-border px-2">
+        <Shield className="size-4 shrink-0 text-primary" />
         <span className="font-mono text-sm font-bold tracking-[0.2em] text-primary">DOIP</span>
         {!collapsed && (
           <span className="truncate text-[10px] uppercase tracking-widest text-muted-foreground">

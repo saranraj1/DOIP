@@ -52,4 +52,6 @@ backend/doip.db
 *.njsproj
 *.sln
 *.sw?
+.lovable/
+
 
