@@ -1,5 +1,3 @@
-// Generated canonical doctrine & SOP corpus dataset for fail-soft offline access.
-// Mirrors the 15 canonical Markdown files in corpus/ (POL-01..03, REF-01..04, SOP-01..08).
 import type { CorpusDocDetail } from "@/lib/api";
 
 export const BUNDLED_CORPUS_DOCS: CorpusDocDetail[] = [

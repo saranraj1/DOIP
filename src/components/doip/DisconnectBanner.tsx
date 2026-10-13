@@ -1,13 +1,8 @@
-// §18.8 — disconnect / stale-data banner.
-// Shown when a run was active and the engine goes IDLE or STOPPED unexpectedly,
-// or when the WS source drops mid-run. Matches the §18.5 shell layout spec:
-// amber-pulsing status dot + banner "Reconnecting — you may be seeing stale data".
 import { useSim } from "@/sim/store";
 import { cn } from "@/lib/utils";
 
 export function DisconnectBanner() {
   const status = useSim((s) => s.status);
-  // Only show during STOPPED — not during normal IDLE (before first run).
   const show = status === "STOPPED";
 
   return (

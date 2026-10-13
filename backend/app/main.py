@@ -50,7 +50,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- active sim sessions keyed by run_id ---
 _sessions: dict[str, SimSession] = {}
 _sessions_lock = asyncio.Lock()
 
@@ -58,12 +57,9 @@ _sessions_lock = asyncio.Lock()
 @app.on_event("startup")
 def _startup() -> None:
     db.init()
-    db.seed_users()   # P2-5: populate demo roster if users table is empty
+    db.seed_users()  
 
 
-# ============================================================
-# Auth helpers
-# ============================================================
 class LoginBody(BaseModel):
     role: str
     userName: str
@@ -95,9 +91,6 @@ def _ws_user(ws: WebSocket) -> dict | None:
     return auth.verify(token) if token else None
 
 
-# ============================================================
-# Core endpoints
-# ============================================================
 @app.get("/health")
 def health() -> dict:
     active = list(_sessions.keys())
@@ -117,10 +110,6 @@ def login(body: LoginBody) -> dict:
 def scenarios_list() -> dict:
     return {"scenarios": SCENARIOS}
 
-
-# ============================================================
-# Run persistence
-# ============================================================
 class RunBody(BaseModel):
     id: str
     seed: int
@@ -154,10 +143,6 @@ def run_aar(run_id: str, user: dict = Depends(current_user)) -> dict:
     db.add_audit(user.get("name", "?"), "aar_download", run_id)
     return {"runId": run_id, "report": report}
 
-
-# ============================================================
-# Audit log  —  paginated  (P0-4)
-# ============================================================
 @app.get("/audit")
 def list_audit(
     page: int = 1,
@@ -180,10 +165,6 @@ def list_audit(
         "pages": max(1, -(-total // per_page)),  # ceiling division
     }
 
-
-# ============================================================
-# Admin — user management  (P2-5: now DB-backed)
-# ============================================================
 class UserBody(BaseModel):
     name: str
     role: str
@@ -215,11 +196,6 @@ def delete_user(name: str, admin: dict = Depends(require_admin)) -> dict:
     return {"ok": True}
 
 
-# ============================================================
-# Custom Scenario CRUD + DSL validation gate  (P2-1)
-# ============================================================
-
-# Whitelisted DSL verbs — AGENTS.md §Ch13: never extend without human approval
 _DSL_WHITELIST = {"spawn_weather", "create_incident", "raise_alert", "modify_speed"}
 
 
@@ -227,8 +203,8 @@ class ScenarioActionBody(BaseModel):
     id: int
     verb: str
     target: str
-    magnitude: float   # 0–100
-    tick: int = 0      # inject at this tick (0 = start)
+    magnitude: float   
+    tick: int = 0      
     rationale: str = ""
 
 
@@ -314,9 +290,6 @@ def validate_scenario(
     return {"valid": valid, "results": results}
 
 
-# ============================================================
-# Canonical Scenario YAML library (Phase 3)
-# ============================================================
 @app.get("/scenarios/yaml")
 def list_yaml_scenarios(user: dict = Depends(current_user)) -> dict:
     scenarios_dir = Path(__file__).resolve().parent.parent.parent / "scenarios"
@@ -339,10 +312,6 @@ def list_yaml_scenarios(user: dict = Depends(current_user)) -> dict:
                 continue
     return {"scenarios": out}
 
-
-# ============================================================
-# Doctrine RAG & Grounding Verifier (Phase 3)
-# ============================================================
 class RagQueryBody(BaseModel):
     query: str
     recentEvents: list[dict[str, Any]] = []
@@ -387,10 +356,6 @@ def get_corpus_doc(doc_id: str, user: dict = Depends(current_user)) -> dict:
         "sections": [{"heading": h, "text": t} for h, t in doc.sections],
     }
 
-
-# ============================================================
-# Sitrep  (P1-1: now async, uses LLM when Ollama is available)
-# ============================================================
 class SitrepBody(BaseModel):
     world: dict[str, Any]
     events: list[dict[str, Any]]
@@ -408,9 +373,6 @@ async def generate_sitrep(body: SitrepBody,
     return {"sections": sections, "generatedAtTick": body.world.get("tick", 0)}
 
 
-# ============================================================
-# Vision adjudication + frames endpoint  (P1-2)
-# ============================================================
 class VisionBody(BaseModel):
     detections: list[dict[str, Any]]
     minConfidence: float = 0.50
@@ -494,9 +456,7 @@ def vision_frames(
     return {"frames": frames, "count": len(frames)}
 
 
-# ============================================================
-# What-If headless runner + history  (P1-3)
-# ============================================================
+
 class WhatIfBody(BaseModel):
     seed: int
     scenarioId: str
@@ -518,7 +478,6 @@ def run_whatif(body: WhatIfBody,
         ticks=body.ticks,
         runs=max(1, min(20, body.runs)),
     )
-    # Persist result to DB  (P1-3)
     whatif_id = db.save_whatif_result(
         seed=result.seed,
         scenario_id=result.scenario_id,
@@ -571,11 +530,6 @@ def corpus_query_endpoint(body: CorpusQueryBody) -> dict:
     return {"results": results, "count": len(results)}
 
 
-
-
-# ============================================================
-# Live sim WebSocket  —  WS /ws/sim/{run_id}
-# ============================================================
 @app.websocket("/ws/sim/{run_id}")
 async def sim_ws(ws: WebSocket, run_id: str) -> None:
     """Stream live sim events to the browser.
@@ -597,7 +551,6 @@ async def sim_ws(ws: WebSocket, run_id: str) -> None:
             seed = int(params.get("seed", 20260101))
             sc_id = params.get("scenarioId", "SC-1")
             speed = float(params.get("speed", 1.0))
-            # Pass run_id so the session can key world snapshots in DB  (P1-4)
             session = SimSession(seed, sc_id, speed, run_id=run_id)
             _sessions[run_id] = session
             await session.start()
@@ -605,16 +558,12 @@ async def sim_ws(ws: WebSocket, run_id: str) -> None:
 
     await session.handle_client(ws)
 
-    # Clean up idle sessions (no clients, stopped)
     async with _sessions_lock:
         if run_id in _sessions and not _sessions[run_id]._clients:
             if _sessions[run_id]._stopped:
                 del _sessions[run_id]
 
 
-# ============================================================
-# War-room task board WebSocket  —  WS /ws/warroom
-# ============================================================
 @app.websocket("/ws/warroom")
 async def warroom(ws: WebSocket) -> None:
     """Shared collaborative task board.

@@ -25,14 +25,10 @@ from typing import Any
 
 log = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Ollama configuration — override via env vars if needed
-# ---------------------------------------------------------------------------
 OLLAMA_BASE_URL = "http://localhost:11434"
 OLLAMA_MODEL = "llama3.2"
-OLLAMA_TIMEOUT_S = 2.0   # hard wall; fail fast so the API stays snappy
+OLLAMA_TIMEOUT_S = 2.0  
 
-# System prompt keeps the LLM in a tightly scoped role
 _SYSTEM_PROMPT = (
     "You are a military staff officer writing a situation report. "
     "Rewrite ONLY the 'body' field of each section using concise, authoritative "
@@ -43,21 +39,16 @@ _SYSTEM_PROMPT = (
 )
 
 
-# ---------------------------------------------------------------------------
-# Data model
-# ---------------------------------------------------------------------------
+
 @dataclass
 class SitrepSection:
     heading: str
     body: str
     confidence: float
     citations: list[dict]
-    evidence_kind: str   # FACT | PROJ
+    evidence_kind: str   
 
 
-# ---------------------------------------------------------------------------
-# Phase 1 — rule-based generator (deterministic, always correct)
-# ---------------------------------------------------------------------------
 def _build_sections(world_snapshot: dict, events: list[dict]) -> list[SitrepSection]:
     def cite(type_: str, n: int = 3) -> list[dict]:
         return [
@@ -137,9 +128,7 @@ def _build_sections(world_snapshot: dict, events: list[dict]) -> list[SitrepSect
     ]
 
 
-# ---------------------------------------------------------------------------
-# Phase 2 — async Ollama LLM enhancement (best-effort, fail-soft)
-# ---------------------------------------------------------------------------
+
 def _ollama_rewrite_sync(sections_json: str) -> str | None:
     """Blocking Ollama call — run in a thread so it can be time-limited."""
     payload = json.dumps({
@@ -166,7 +155,6 @@ def _ollama_rewrite_sync(sections_json: str) -> str | None:
 
 async def _llm_enhance(sections: list[SitrepSection]) -> list[SitrepSection]:
     """Try to rewrite bodies via Ollama; return originals on any failure."""
-    # Build a lean context for the LLM — only the fields it needs
     ctx = [
         {"heading": s.heading, "body": s.body, "evidence_kind": s.evidence_kind}
         for s in sections
@@ -174,7 +162,7 @@ async def _llm_enhance(sections: list[SitrepSection]) -> list[SitrepSection]:
     try:
         raw = await asyncio.wait_for(
             asyncio.get_event_loop().run_in_executor(None, _ollama_rewrite_sync, json.dumps(ctx)),
-            timeout=OLLAMA_TIMEOUT_S + 0.5,   # slightly above inner timeout
+            timeout=OLLAMA_TIMEOUT_S + 0.5,   
         )
     except (asyncio.TimeoutError, Exception):
         return sections
@@ -182,7 +170,6 @@ async def _llm_enhance(sections: list[SitrepSection]) -> list[SitrepSection]:
     if not raw:
         return sections
 
-    # Parse LLM response — expect a JSON array
     try:
         rewritten = json.loads(raw)
         if not isinstance(rewritten, list) or len(rewritten) != len(sections):
@@ -194,10 +181,6 @@ async def _llm_enhance(sections: list[SitrepSection]) -> list[SitrepSection]:
     except (json.JSONDecodeError, KeyError, IndexError):
         return sections
 
-
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
 def generate(world_snapshot: dict, events: list[dict]) -> list[dict]:
     """Synchronous entry-point — returns rule-based sections only.
 

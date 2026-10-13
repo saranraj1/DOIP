@@ -6,8 +6,6 @@ Tables:
   whatif_results  — persisted what-if branch results (P1-3)
   warroom_messages — war-room chat/task history for replay on join (P1-5)
 
-Swap this module for a Postgres implementation in Phase 2 without touching
-main.py routes.
 """
 
 import json
@@ -24,10 +22,6 @@ def _connect() -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     return conn
 
-
-# ---------------------------------------------------------------------------
-# Schema  (idempotent — safe to call on every startup)
-# ---------------------------------------------------------------------------
 def init() -> None:
     with _lock, _connect() as conn:
         conn.executescript(
@@ -134,13 +128,9 @@ def list_runs(limit: int = 8) -> list[dict]:
             "events": r["events"],
             "log": json.loads(r["log"]),
         }
-        for r in reversed(rows)   # oldest-first, matching the frontend run list
+        for r in reversed(rows)   
     ]
 
-
-# ---------------------------------------------------------------------------
-# World snapshot persistence  (P1-4)
-# ---------------------------------------------------------------------------
 def save_world_snapshot(run_id: str, world: dict) -> None:
     """Upsert the live world snapshot for an active run.
 
@@ -149,7 +139,6 @@ def save_world_snapshot(run_id: str, world: dict) -> None:
     The row is created if it doesn't yet exist (uses a placeholder log).
     """
     with _lock, _connect() as conn:
-        # Ensure a stub row exists so the UPDATE doesn't silently no-op
         conn.execute(
             "INSERT OR IGNORE INTO runs "
             "(id, seed, scenario_id, ticks, events, log, world_json) "
@@ -177,9 +166,6 @@ def load_world_snapshot(run_id: str) -> dict | None:
     return None
 
 
-# ---------------------------------------------------------------------------
-# Audit log
-# ---------------------------------------------------------------------------
 def add_audit(actor: str, action: str, detail: str = "") -> None:
     with _lock, _connect() as conn:
         conn.execute(
@@ -209,10 +195,6 @@ def list_audit_page(page: int = 1, per_page: int = 50) -> tuple[list[dict], int]
         ).fetchall()
     return [dict(r) for r in rows], total
 
-
-# ---------------------------------------------------------------------------
-# What-If result persistence  (P1-3)
-# ---------------------------------------------------------------------------
 def save_whatif_result(
     seed: int,
     scenario_id: str,
@@ -221,7 +203,6 @@ def save_whatif_result(
     deltas: dict,
 ) -> int:
     """Persist a what-if result. Returns the new row id."""
-    # Extract baseline/branch KPIs from deltas dict
     baseline_kpis = {k: v.get("baseline") for k, v in deltas.items()}
     branch_kpis   = {k: v.get("branch")   for k, v in deltas.items()}
     with _lock, _connect() as conn:
@@ -237,7 +218,7 @@ def save_whatif_result(
                 json.dumps(deltas),
             ),
         )
-        return cur.lastrowid  # type: ignore[return-value]
+        return cur.lastrowid  
 
 
 def list_whatif_results(limit: int = 20) -> list[dict]:
@@ -265,9 +246,7 @@ def list_whatif_results(limit: int = 20) -> list[dict]:
     ]
 
 
-# ---------------------------------------------------------------------------
-# War-room message persistence  (P1-5)
-# ---------------------------------------------------------------------------
+
 def save_warroom_message(type_: str, payload: dict) -> int:
     """Persist a war-room message. Returns the new row id."""
     with _lock, _connect() as conn:
@@ -275,7 +254,7 @@ def save_warroom_message(type_: str, payload: dict) -> int:
             "INSERT INTO warroom_messages (type, payload) VALUES (?,?)",
             (type_, json.dumps(payload)),
         )
-        return cur.lastrowid  # type: ignore[return-value]
+        return cur.lastrowid  
 
 
 def list_warroom_messages(limit: int = 200) -> list[dict]:
@@ -293,7 +272,7 @@ def list_warroom_messages(limit: int = 200) -> list[dict]:
             "payload": json.loads(r["payload"]),
             "created_at": r["created_at"],
         }
-        for r in reversed(rows)   # oldest-first for replay
+        for r in reversed(rows) 
     ]
 
 
@@ -303,10 +282,6 @@ def delete_warroom_message(msg_id: int) -> bool:
         cur = conn.execute("DELETE FROM warroom_messages WHERE id = ?", (msg_id,))
         return cur.rowcount > 0
 
-
-# ---------------------------------------------------------------------------
-# User roster persistence  (P2-5)
-# ---------------------------------------------------------------------------
 _SEED_USERS = [
     {"name": "Col. A. Verma",     "role": "admin",    "unit": "HQ"},
     {"name": "Maj. R. Sethi",     "role": "planner",  "unit": "Ops Cell"},
@@ -349,9 +324,6 @@ def remove_user(name: str) -> bool:
         return cur.rowcount > 0
 
 
-# ---------------------------------------------------------------------------
-# Custom scenario store  (P2-1)
-# ---------------------------------------------------------------------------
 def list_custom_scenarios() -> list[dict]:
     with _lock, _connect() as conn:
         rows = conn.execute(

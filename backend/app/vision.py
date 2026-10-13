@@ -33,7 +33,7 @@ DEFAULT_THRESHOLD = 0.80
 
 _WEIGHTS_DIR = Path(__file__).resolve().parent.parent / "weights"
 _YOLO_MODEL: Any = None
-_MODEL_LOADED = False   # sentinel so we only attempt once per process
+_MODEL_LOADED = False   
 
 LABELS = ["vehicle", "person", "uav", "structure"]
 
@@ -113,9 +113,6 @@ CAMERA_CHANNELS = [
 ]
 
 
-# ---------------------------------------------------------------------------
-# Model loading & status — lazy, fail-soft
-# ---------------------------------------------------------------------------
 def _find_weights() -> Path | None:
     candidates = [
         _WEIGHTS_DIR / "yolov8n-doip-v1.4.pt",
@@ -146,7 +143,7 @@ def load_model() -> Any | None:
         return None
 
     try:
-        from ultralytics import YOLO  # type: ignore[import]
+        from ultralytics import YOLO 
         _YOLO_MODEL = YOLO(str(weights_file))
         log.info("YOLO model loaded from %s", weights_file)
     except ImportError:
@@ -185,10 +182,6 @@ def get_model_status() -> dict[str, Any]:
         "adjudication_gate": "human_operator_required",
     }
 
-
-# ---------------------------------------------------------------------------
-# Neural inference execution
-# ---------------------------------------------------------------------------
 def infer_frame(
     frame_bytes: bytes,
     unit_id: str = "CAM-01",
@@ -212,8 +205,8 @@ def infer_frame(
         }
 
     try:
-        from PIL import Image  # type: ignore[import]
-        import numpy as np  # type: ignore[import]
+        from PIL import Image 
+        import numpy as np  
 
         img = Image.open(io.BytesIO(frame_bytes)).convert("RGB")
         img_w, img_h = img.size
@@ -227,8 +220,6 @@ def infer_frame(
                 cls_id = int(box.cls[0])
                 conf = float(box.conf[0])
                 label = model.names.get(cls_id, "unknown")
-
-                # xywhn gives [x_center, y_center, w, h] normalized 0..1
                 xywhn = box.xywhn[0].tolist()
                 xc, yc, w, h = xywhn[0], xywhn[1], xywhn[2], xywhn[3]
                 top_left_x = max(0.0, min(100.0, (xc - w / 2.0) * 100.0))
@@ -293,30 +284,27 @@ def run_inference(frame_bytes: bytes, unit_id: str = "U-UAV-1", tick: int = 0) -
     return res.get("detections", [])
 
 
-# ---------------------------------------------------------------------------
-# Synthetic & tactical frame generator
-# ---------------------------------------------------------------------------
+
 def _make_tactical_png(width: int = 320, height: int = 180, channel: dict | None = None, tick: int = 0) -> bytes:
     """Generate a crisp tactical surveillance camera image with crosshair HUD overlay."""
     try:
-        from PIL import Image, ImageDraw  # type: ignore[import]
+        from PIL import Image, ImageDraw 
         channel_info = channel or CAMERA_CHANNELS[0]
         mode = channel_info.get("mode", "EO-OPTICAL")
         cid = channel_info.get("id", "CAM-01")
 
-        # Palette choice based on sensor mode
         if "THERMAL" in mode or "FLIR" in mode:
-            base_color = (12, 28, 20)      # Night FLIR emerald green
+            base_color = (12, 28, 20)     
             grid_color = (25, 60, 42)
             accent = (72, 220, 140)
             target_color = (245, 230, 90)
         elif "INFRARED" in mode or "IR" in mode:
-            base_color = (22, 16, 32)      # IR purple-indigo
+            base_color = (22, 16, 32)      
             grid_color = (45, 35, 60)
             accent = (160, 120, 240)
             target_color = (255, 110, 80)
         else:
-            base_color = (16, 22, 28)      # Optical Slate Navy
+            base_color = (16, 22, 28)     
             grid_color = (28, 42, 54)
             accent = (0, 210, 255)
             target_color = (255, 200, 60)
@@ -324,13 +312,12 @@ def _make_tactical_png(width: int = 320, height: int = 180, channel: dict | None
         img = Image.new("RGB", (width, height), color=base_color)
         draw = ImageDraw.Draw(img)
 
-        # Draw tactical horizon / grid lines
+
         for y_pos in range(30, height, 40):
             draw.line([(0, y_pos), (width, y_pos)], fill=grid_color, width=1)
         for x_pos in range(40, width, 50):
             draw.line([(x_pos, 0), (x_pos, height)], fill=grid_color, width=1)
 
-        # Center reticle
         cx, cy = width // 2, height // 2
         reticle_len = 16
         draw.line([(cx - reticle_len, cy), (cx - 4, cy)], fill=accent, width=1)
@@ -339,37 +326,30 @@ def _make_tactical_png(width: int = 320, height: int = 180, channel: dict | None
         draw.line([(cx, cy + 4), (cx, cy + reticle_len)], fill=accent, width=1)
         draw.rectangle([cx - 2, cy - 2, cx + 2, cy + 2], outline=accent)
 
-        # Corner framing marks
+
         corner_pad = 12
         corner_arm = 10
-        # Top-left
         draw.line([(corner_pad, corner_pad), (corner_pad + corner_arm, corner_pad)], fill=accent, width=1)
         draw.line([(corner_pad, corner_pad), (corner_pad, corner_pad + corner_arm)], fill=accent, width=1)
-        # Top-right
         draw.line([(width - corner_pad, corner_pad), (width - corner_pad - corner_arm, corner_pad)], fill=accent, width=1)
         draw.line([(width - corner_pad, corner_pad), (width - corner_pad, corner_pad + corner_arm)], fill=accent, width=1)
-        # Bottom-left
         draw.line([(corner_pad, height - corner_pad), (corner_pad + corner_arm, height - corner_pad)], fill=accent, width=1)
         draw.line([(corner_pad, height - corner_pad), (corner_pad, height - corner_pad - corner_arm)], fill=accent, width=1)
-        # Bottom-right
         draw.line([(width - corner_pad, height - corner_pad), (width - corner_pad - corner_arm, height - corner_pad)], fill=accent, width=1)
         draw.line([(width - corner_pad, height - corner_pad), (width - corner_pad, height - corner_pad - corner_arm)], fill=accent, width=1)
 
-        # Target box simulation in the field of view
         seed = (tick * 17 + hash(cid)) & 0xFFFF
         tx = 60 + (seed % 140)
         ty = 40 + ((seed >> 4) % 70)
         tw = 45 + (seed % 30)
         th = 30 + ((seed >> 8) % 25)
         draw.rectangle([tx, ty, tx + tw, ty + th], outline=target_color, width=2)
-        # Target corner notches
         draw.rectangle([tx - 2, ty - 2, tx + 4, ty + 4], fill=target_color)
 
         buf = io.BytesIO()
         img.save(buf, format="PNG", optimize=True)
         return buf.getvalue()
     except Exception:
-        # Fallback to stdlib minimal png
         return _make_minimal_png(64, 64, seed=tick)
 
 
@@ -436,7 +416,7 @@ def generate_frames(n: int = 6, tick: int = 0) -> list[dict[str, Any]]:
             "height": 360,
             "mimeType": "image/jpeg",
             "base64": b64,
-            "image_b64": b64,      # dual compatibility
+            "image_b64": b64,     
             "detections": [detection_item],
             "telemetry": {
                 "lat": round(32.7410 + (i * 0.015), 4),
@@ -448,9 +428,6 @@ def generate_frames(n: int = 6, tick: int = 0) -> list[dict[str, Any]]:
     return frames
 
 
-# ---------------------------------------------------------------------------
-# Tactical Samples for instant 1-click YOLO verification
-# ---------------------------------------------------------------------------
 def get_tactical_samples() -> list[dict[str, Any]]:
     """Return authentic military surveillance reconnaissance photos for 1-click YOLO testing."""
     samples_def = [
@@ -526,9 +503,6 @@ def get_tactical_samples() -> list[dict[str, Any]]:
     return samples
 
 
-# ---------------------------------------------------------------------------
-# Adjudication — Ch18 S9, AGENTS.md §Ch13
-# ---------------------------------------------------------------------------
 def adjudicate(
     detection_events: list[dict],
     min_confidence: float = DEFAULT_THRESHOLD,
@@ -566,7 +540,6 @@ def adjudicate(
                 "lon": payload.get("lon"),
                 "tick": e.get("tick", 0),
             })
-            # Accepted detection becomes a map event with model lineage.
             incidents.append({
                 "type": "incident_open",
                 "severity": "medium",
@@ -579,7 +552,7 @@ def adjudicate(
                     "confidence": conf,
                     "model": payload.get("model", "yolov8n-doip-v1.4"),
                     "frame": payload.get("frame"),
-                    "sourceEventId": e.get("id"),   # model lineage
+                    "sourceEventId": e.get("id"),  
                 },
             })
         else:

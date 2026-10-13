@@ -1,6 +1,3 @@
-# DOIP Surveillance Footage Manifest (footage/README.md)
-# All footage entries are license-audited and mapped to simulation scenarios.
-
 clips:
   - id: "CLIP-SC1-OPTICAL"
     file: "clips/patrol_night_ir_01.mp4"

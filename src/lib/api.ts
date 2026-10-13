@@ -1,6 +1,3 @@
-// Fail-soft HTTP + WS client for the DOIP MVP backend.
-// Design rule: every call resolves null when the server is absent —
-// the app must work fully offline, unchanged.
 import type { RunRecord } from "@/sim/store";
 import type { Role } from "@/sim/types";
 

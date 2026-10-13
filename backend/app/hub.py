@@ -24,7 +24,7 @@ class WarRoomHub:
     def __init__(self) -> None:
         self.clients: list[WebSocket] = []
         self.tasks: list[dict] = []
-        self._db_loaded = False   # load from DB once on first connection
+        self._db_loaded = False   
 
     # ------------------------------------------------------------------
     def _ensure_loaded(self) -> None:
@@ -35,7 +35,6 @@ class WarRoomHub:
         try:
             from . import db as db_mod
             rows = db_mod.list_warroom_messages(_HISTORY_REPLAY_LIMIT)
-            # Rebuild task list from persisted "add" messages (latest wins on id clash)
             task_map: dict[str, dict] = {}
             for row in rows:
                 if row["type"] == "add":
@@ -50,14 +49,13 @@ class WarRoomHub:
                     task_map.pop(tid, None)
             self.tasks = list(task_map.values())
         except Exception:
-            pass   # DB unavailable — start with empty board
+            pass   
 
     # ------------------------------------------------------------------
     async def connect(self, ws: WebSocket) -> None:
         await ws.accept()
         self._ensure_loaded()
         self.clients.append(ws)
-        # Send current task snapshot to the new joiner
         await ws.send_json({"type": "snapshot", "tasks": self.tasks})
 
     def disconnect(self, ws: WebSocket) -> None:
@@ -86,7 +84,7 @@ class WarRoomHub:
             _persist("delete", {"id": tid})
 
         else:
-            return   # unknown frame — drop silently
+            return  
 
         await self.broadcast(data, exclude=ws)
 
@@ -101,15 +99,12 @@ class WarRoomHub:
                 self.disconnect(client)
 
 
-# ---------------------------------------------------------------------------
-# Persistence helper — decoupled so tests can monkeypatch
-# ---------------------------------------------------------------------------
+
 def _persist(type_: str, payload: dict) -> None:
     try:
         from . import db as db_mod
         db_mod.save_warroom_message(type_, payload)
     except Exception:
-        pass   # fail-soft: if DB is unavailable, live state still works
-
+        pass   
 
 hub = WarRoomHub()

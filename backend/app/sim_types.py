@@ -38,12 +38,12 @@ class SimEvent:
 class Unit:
     id: str
     callsign: str
-    kind: str  # patrol | uav | convoy | depot
+    kind: str  
     lat: float
     lon: float
     heading: float
     speedKph: float
-    status: str  # active | slowed | halted | stale
+    status: str 
     fuel: float
     battery: float
     lastSeenTick: int

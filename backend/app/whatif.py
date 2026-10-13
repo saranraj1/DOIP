@@ -21,8 +21,8 @@ from .engine import SimEngine
 @dataclass
 class WhatIfAction:
     """One branch action injected at a specific tick."""
-    tick: int              # tick at which to inject (0 = inject at start, before first step)
-    type: str              # SimEvent type, e.g. 'weather_spawn', 'incident_open'
+    tick: int              
+    type: str              
     severity: str = "medium"
     entity_id: str = "system"
     payload: dict[str, Any] = field(default_factory=dict)
@@ -35,18 +35,17 @@ class WhatIfResult:
     ticks: int
     baseline_events: list[dict]
     branch_events: list[dict]
-    deltas: dict                     # high-level KPI diff
-    baseline_risk: list[float]        # tick-by-tick risk [0..ticks]
-    branch_risk: list[float]          # tick-by-tick risk [0..ticks]
-    p10_risk: list[float] | None = None  # Monte Carlo 10th percentile (optimistic)
-    p50_risk: list[float] | None = None  # Monte Carlo 50th percentile (median)
-    p90_risk: list[float] | None = None  # Monte Carlo 90th percentile (worst-case)
+    deltas: dict                    
+    baseline_risk: list[float]       
+    branch_risk: list[float]          
+    p10_risk: list[float] | None = None 
+    p50_risk: list[float] | None = None  
+    p90_risk: list[float] | None = None  
     trajectories: dict[str, Any] = field(default_factory=dict)
     spatial_annotations: dict[str, Any] = field(default_factory=dict)
     monte_carlo_runs: int = 1
 
 
-# Simple KPIs extracted from an event log
 def _kpis(events: list[dict]) -> dict:
     incidents_opened = sum(1 for e in events if e["type"] == "incident_open")
     incidents_closed = sum(1 for e in events if e["type"] == "incident_close")
@@ -56,7 +55,6 @@ def _kpis(events: list[dict]) -> dict:
         1 for e in events
         if e["type"] == "alert_raise" and e["severity"] == "critical"
     )
-    # Mean response time: ticks between incident_open and incident_close for same entity
     open_at: dict[str, int] = {}
     close_times: list[int] = []
     for e in events:
@@ -66,13 +64,11 @@ def _kpis(events: list[dict]) -> dict:
             close_times.append(e["tick"] - open_at.pop(e["entityId"]))
     mean_close = round(sum(close_times) / len(close_times), 1) if close_times else None
 
-    # Coverage estimate based on unit active status
     total_moves = sum(1 for e in events if e["type"] == "unit_move")
     moves_in_weather = sum(1 for e in events if e["type"] == "unit_move" and e.get("payload", {}).get("inWeather"))
     weather_ratio = (moves_in_weather / total_moves) if total_moves > 0 else 0.0
     coverage_pct = max(20, round(92 - weather_ratio * 35 - (incidents_opened * 4.5)))
 
-    # Sustainment estimate
     sustainment_hours = max(12, round(48 - (incidents_opened * 2.8) - (critical_alerts * 1.5)))
 
     return {
@@ -92,15 +88,14 @@ def _compute_tick_risk_series(events: list[dict], ticks: int) -> list[float]:
     """Calculate empirical operational risk (1-100) at each tick based on real engine events."""
     risk_series = []
     
-    # Pre-index events by tick
     events_by_tick: dict[int, list[dict]] = {t: [] for t in range(ticks + 1)}
     for e in events:
         t = e.get("tick", 0)
         if 0 <= t <= ticks:
             events_by_tick[t].append(e)
 
-    active_incidents: dict[str, float] = {}  # entityId -> severity weight
-    recent_alerts: list[tuple[int, float]] = []  # (tick, weight)
+    active_incidents: dict[str, float] = {}  
+    recent_alerts: list[tuple[int, float]] = [] 
 
     base_risk = 8.0
     current_risk = base_risk
@@ -118,20 +113,17 @@ def _compute_tick_risk_series(events: list[dict], ticks: int) -> list[float]:
             elif etype == "alert_raise":
                 recent_alerts.append((t, weight * 0.7))
 
-        # Expire alerts older than 12 ticks
         recent_alerts = [(at, w) for at, w in recent_alerts if t - at <= 12]
 
         incident_stress = sum(active_incidents.values())
         alert_stress = sum(w * max(0.2, 1.0 - (t - at) / 12.0) for at, w in recent_alerts)
 
-        # Count units in weather at this tick
         units_in_weather = sum(
             1 for e in events_by_tick[t]
             if e.get("type") == "unit_move" and e.get("payload", {}).get("inWeather")
         )
 
         target_risk = base_risk + incident_stress + alert_stress + (units_in_weather * 6.0)
-        # Smooth transition towards target risk
         current_risk += (target_risk - current_risk) * 0.22
         clamped = max(3.0, min(98.0, round(current_risk, 1)))
         risk_series.append(clamped)
@@ -231,7 +223,6 @@ def run_branch(
         for a in actions
     ]
 
-    # --- 1. Baseline Primary Run ---
     baseline_engine = SimEngine()
     baseline_events = baseline_engine.start(seed, scenario_id)
     for _ in range(ticks):
@@ -239,7 +230,6 @@ def run_branch(
     baseline_log = [e.to_dict() for e in baseline_events]
     baseline_risk = _compute_tick_risk_series(baseline_log, ticks)
 
-    # --- 2. Branch Primary Run ---
     branch_engine = SimEngine()
     branch_events = branch_engine.start(seed, scenario_id)
     for t in range(1, ticks + 1):
@@ -269,7 +259,6 @@ def run_branch(
         else:
             deltas[key] = {"baseline": b, "branch": br, "delta": None}
 
-    # Extract spatial paths & annotations
     trajectories = {
         "baseline": _extract_trajectories(baseline_log),
         "branch": _extract_trajectories(branch_log),
@@ -279,7 +268,6 @@ def run_branch(
         "branch": _extract_spatial_annotations(branch_log),
     }
 
-    # --- 3. Monte Carlo Ensemble (if requested) ---
     p10_risk = None
     p50_risk = None
     p90_risk = None

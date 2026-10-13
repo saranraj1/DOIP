@@ -186,9 +186,8 @@ class SimEngine:
         self.tick += 1
         rand = self._rand
         sc = self._sc
-        out: list[dict[str, Any]] = []   # partials
+        out: list[dict[str, Any]] = []   
 
-        # weather
         if rand() < sc["weatherRate"] and len(self._weather) < 4:
             cell = WeatherCell(
                 id=f"W-{self.tick}",
@@ -218,7 +217,6 @@ class SimEngine:
                 surviving.append(w)
         self._weather = surviving
 
-        # units
         for u in self._units:
             silent_until = self._silence.get(u.id, 0)
             if silent_until > self.tick:
@@ -287,7 +285,6 @@ class SimEngine:
                                           "lat": u.lat, "lon": u.lon,
                                           "frame": f"F-{self.tick}-{u.id}"}})
 
-        # depots
         if self.tick % 10 == 0:
             for d in self._depots:
                 d.stock["fuel"] = max(0, d.stock["fuel"] - round(between(rand, 2, 14)))
@@ -297,8 +294,6 @@ class SimEngine:
                 out.append({"type": "resource_level",
                              "severity": "high" if d.stock["fuel"] < 600 else "low",
                              "entityId": d.id, "payload": {"stock": dict(d.stock)}})
-
-        # vitals
         if self.tick % 8 == 0:
             for p in self._personnel:
                 p.heartRate = round(min(180, max(52, p.heartRate + between(rand, -5, 6))))
@@ -308,7 +303,6 @@ class SimEngine:
                              "entityId": p.id,
                              "payload": {"heartRate": p.heartRate, "fatigue": p.fatigue}})
 
-        # incidents
         if rand() < sc["incidentRate"]:
             u = pick(rand, self._units)
             bump = 0.6 if sc["incidentRate"] > 0.1 else 0

@@ -1,5 +1,3 @@
-// §18.8 — global keyboard shortcut registration.
-// Skips when focus is inside an input/textarea/select.
 import { useEffect } from "react";
 
 type Handler = (e: KeyboardEvent) => void;

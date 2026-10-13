@@ -543,17 +543,22 @@ function VisionScreen() {
           <div className="space-y-3 lg:col-span-8">
             <Panel
               title={
-                <div className="flex items-center gap-2">
-                  <Eye className="h-4 w-4 text-primary" />
-                  <span>YOLOv8 Neural Detection Studio: {activeImageLabel}</span>
+                <div className="flex items-center gap-2 min-w-0">
+                  <Eye className="h-4 w-4 text-primary shrink-0" />
+                  <span className="truncate font-semibold">
+                    YOLOv8 Neural Detection Studio: {activeImageLabel}
+                  </span>
                 </div>
               }
               actions={
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground hidden sm:inline">
+                    Sensor:
+                  </span>
                   <select
                     value={thermalPalette}
                     onChange={(e) => setThermalPalette(e.target.value as ThermalPalette)}
-                    className="border border-border bg-background px-1.5 py-1 font-mono text-[10px] uppercase tracking-wider text-primary"
+                    className="border border-border bg-background px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-primary"
                     aria-label="Thermal Sensor Palette"
                   >
                     {Object.entries(THERMAL_PALETTES).map(([k, v]) => (
@@ -562,44 +567,53 @@ function VisionScreen() {
                       </option>
                     ))}
                   </select>
-
-                  <div className="hidden sm:flex items-center gap-1 border border-border bg-base p-0.5">
+                </div>
+              }
+            >
+              {/* Dedicated Tactical Action & Preset Strip */}
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2 border border-border bg-surface/90 p-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                    Confidence Preset:
+                  </span>
+                  <div className="flex items-center gap-1 border border-border bg-base p-0.5">
                     {SENSITIVITY_PROFILES.map((p) => (
                       <button
                         key={p.label}
+                        type="button"
                         onClick={() => setMinConf(p.conf)}
                         className={cn(
-                          "px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest transition-colors",
+                          "px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest transition-colors cursor-pointer",
                           minConf === p.conf
                             ? "bg-primary text-primary-foreground font-bold"
-                            : "text-muted-foreground hover:text-foreground",
+                            : "text-muted-foreground hover:text-foreground hover:bg-raised",
                         )}
                       >
                         {p.label}
                       </button>
                     ))}
                   </div>
-
-                  <button
-                    onClick={() => handleRunInference()}
-                    disabled={inferring || !activeImageB64}
-                    className="flex items-center gap-1.5 border border-primary bg-primary px-3 py-1 font-mono text-[11px] font-bold uppercase tracking-wider text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-all shadow-[0_0_12px_rgba(0,210,255,0.3)]"
-                  >
-                    {inferring ? (
-                      <>
-                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                        Running YOLOv8n...
-                      </>
-                    ) : (
-                      <>
-                        <Play className="h-3.5 w-3.5 fill-current" />
-                        Run YOLO Detection
-                      </>
-                    )}
-                  </button>
                 </div>
-              }
-            >
+
+                <button
+                  type="button"
+                  onClick={() => handleRunInference()}
+                  disabled={inferring || !activeImageB64}
+                  className="flex items-center gap-2 border border-white bg-white px-4 py-1.5 font-mono text-xs font-bold uppercase tracking-widest text-black hover:bg-white/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer shadow-none doip-btn-solid"
+                >
+                  {inferring ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin text-black" />
+                      <span>Running YOLOv8n...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play className="h-4 w-4 fill-black text-black" />
+                      <span>Run YOLO Detection</span>
+                    </>
+                  )}
+                </button>
+              </div>
               {/* Image Frame Visualizer with Bounding Box Overlays */}
               <div className="relative aspect-video w-full overflow-hidden border border-border bg-black/90 flex items-center justify-center">
                 {activeImageB64 ? (

@@ -4,9 +4,6 @@ import { SEVERITY_META } from "@/lib/doip";
 import { useCountUp } from "@/hooks/useCountUp";
 import type { Severity } from "@/sim/types";
 
-// ---------------------------------------------------------------------------
-// SeverityTag
-// ---------------------------------------------------------------------------
 export function SeverityTag({
   severity,
   className,
@@ -37,9 +34,6 @@ export function SeverityTag({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Panel
-// ---------------------------------------------------------------------------
 export function Panel({
   title,
   actions,
@@ -68,7 +62,7 @@ export function Panel({
       )}
     >
       {(title || actions) && (
-        <header className="flex h-6 items-center justify-between gap-2 border-b border-border bg-raised/30 px-2">
+        <header className="flex min-h-6 items-center justify-between gap-2 border-b border-border bg-raised/30 px-2 py-0.5">
           <h2 className="doip-strip truncate">{title}</h2>
           {actions}
         </header>
@@ -78,12 +72,9 @@ export function Panel({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Stat  —  §18.8: numeric values count-up on change; non-numeric renders as-is.
-// ---------------------------------------------------------------------------
+
 function AnimatedNumber({ value, decimals = 0 }: { value: number; decimals?: number }) {
   const animated = useCountUp(value, { decimals });
-  // flash the key frame when value changes
   const [flash, setFlash] = useState(false);
   const prev = useRef(value);
   useEffect(() => {
@@ -127,9 +118,6 @@ export function Stat({
   );
 }
 
-// ---------------------------------------------------------------------------
-// EmptyState
-// ---------------------------------------------------------------------------
 export function EmptyState({ label, hint }: { label: string; hint?: string }) {
   return (
     <div className="flex h-full min-h-16 flex-col items-start justify-center gap-1 border border-dashed border-border p-2 text-left">
@@ -139,9 +127,6 @@ export function EmptyState({ label, hint }: { label: string; hint?: string }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// LoadingState  —  §18.8: skeleton shimmer instead of a bare spinner.
-// ---------------------------------------------------------------------------
 export function LoadingState({
   label = "Awaiting telemetry",
   rows = 3,
@@ -165,10 +150,6 @@ export function LoadingState({
   );
 }
 
-// ---------------------------------------------------------------------------
-// AnimatedFeedItem  —  §18.8: new event rows slide in from below.
-// Use as a wrapper around <li> / any event row.
-// ---------------------------------------------------------------------------
 export function AnimatedFeedItem({
   id,
   children,
@@ -185,16 +166,10 @@ export function AnimatedFeedItem({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Mono
-// ---------------------------------------------------------------------------
 export function Mono({ children, className }: { children: React.ReactNode; className?: string }) {
   return <span className={cn("font-mono text-mono", className)}>{children}</span>;
 }
 
-// ---------------------------------------------------------------------------
-// AiBadge
-// ---------------------------------------------------------------------------
 export function AiBadge({ label = "AI GENERATED" }: { label?: string }) {
   return (
     <span
@@ -206,9 +181,6 @@ export function AiBadge({ label = "AI GENERATED" }: { label?: string }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// StatStrip  —  horizontal KPI strip; numeric values auto-animate.
-// ---------------------------------------------------------------------------
 export function StatStrip({
   items,
   className,

@@ -23,7 +23,6 @@ const CARTO_LABELS = [
   "https://c.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}.png",
 ];
 
-/** Satellite imagery, darkened + desaturated in-canvas so markers stay full-brightness. */
 const imageryStyle = (): StyleSpecification => ({
   version: 8,
   sources: {
@@ -49,7 +48,6 @@ const imageryStyle = (): StyleSpecification => ({
       type: "raster",
       source: "esri-imagery",
       paint: {
-        // equivalent of a rgba(0,0,0,0.45) scrim + saturate(0.6), applied to tiles only
         "raster-opacity": 1,
         "raster-brightness-max": 0.55,
         "raster-saturation": -0.4,
@@ -92,7 +90,6 @@ export interface TacticalMapProps {
 
 const unitColor = (u: Unit) => "#FFFFFF";
 
-/** metres -> approximate degree ring polygon */
 function ringPolygon(lat: number, lon: number, radiusM: number, steps = 40): number[][] {
   const dLat = radiusM / 111_320;
   const dLon = radiusM / (111_320 * Math.cos((lat * Math.PI) / 180) || 1);
@@ -146,7 +143,6 @@ export default function TacticalMap({
   const radarRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<{ center: [number, number]; zoom: number } | null>(null);
 
-  /* ---------- init (rebuilds when the basemap changes) ---------- */
   useEffect(() => {
     if (!containerRef.current) return;
     setReady(false);
@@ -159,7 +155,6 @@ export default function TacticalMap({
       zoom: saved ? saved.zoom : zoom,
       pitch: DEFAULT_PITCH,
       bearing: DEFAULT_BEARING,
-      // attribution comes from each source/style — never duplicated here
       attributionControl: { compact: false },
       dragRotate: true,
     });
@@ -175,7 +170,6 @@ export default function TacticalMap({
     const loadFallback = window.setTimeout(doneLoading, 4000);
 
     const initLayers = () => {
-      // Basemap kept just off pure black so moving markers do not smear
       try {
         for (const l of map.getStyle().layers ?? []) {
           if (l.type === "background") map.setPaintProperty(l.id, "background-color", "#0A0A0A");
@@ -184,7 +178,6 @@ export default function TacticalMap({
         /* style not ready */
       }
 
-      // 3D building extrusions (vector dark basemap only)
       if (basemap === "dark") {
         try {
           map.addLayer({
@@ -217,7 +210,6 @@ export default function TacticalMap({
       src("waypoints");
       src("trails", true);
 
-      // Restricted / patrol zones -> extruded translucent walls
       map.addLayer({
         id: "zones-fill",
         type: "fill-extrusion",
@@ -241,7 +233,6 @@ export default function TacticalMap({
         },
       });
 
-      // Weather domes
       map.addLayer({
         id: "weather-dome",
         type: "fill-extrusion",
@@ -254,7 +245,6 @@ export default function TacticalMap({
         },
       });
 
-      // Motion trails
       map.addLayer({
         id: "unit-trails",
         type: "line",
@@ -276,7 +266,6 @@ export default function TacticalMap({
         },
       });
 
-      // Planned routes
       map.addLayer({
         id: "routes-line",
         type: "line",
@@ -289,7 +278,6 @@ export default function TacticalMap({
         },
       });
 
-      // Incident ground rings
       map.addLayer({
         id: "incident-rings",
         type: "circle",
@@ -354,10 +342,8 @@ export default function TacticalMap({
 
       mapRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [basemap]);
 
-  /* ---------- zones ---------- */
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
@@ -391,7 +377,6 @@ export default function TacticalMap({
     );
   }, [zones, ready]);
 
-  /* ---------- weather domes ---------- */
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
@@ -409,7 +394,6 @@ export default function TacticalMap({
     );
   }, [weather, ready]);
 
-  /* ---------- routes + waypoints ---------- */
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
@@ -433,7 +417,6 @@ export default function TacticalMap({
     );
   }, [routes, waypoints, ready]);
 
-  /* ---------- incidents (animated rings) ---------- */
   const incidentsRef = useRef(incidents);
   incidentsRef.current = incidents;
   useEffect(() => {
@@ -468,7 +451,6 @@ export default function TacticalMap({
     return () => cancelAnimationFrame(raf);
   }, [ready]);
 
-  /* ---------- units: DOM markers + trails ---------- */
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
@@ -530,7 +512,6 @@ export default function TacticalMap({
     );
   }, [units, tick, selectedId, ready]);
 
-  /* ---------- collaborator cursors ---------- */
   const cursorMarkers = useRef<Record<string, maplibregl.Marker>>({});
   useEffect(() => {
     const map = mapRef.current;
@@ -560,7 +541,6 @@ export default function TacticalMap({
     }
   }, [cursors, ready]);
 
-  /* ---------- focus / pulse flyTo ---------- */
   useEffect(() => {
     const map = mapRef.current;
     const target = focus ?? pulseAt;
@@ -572,10 +552,8 @@ export default function TacticalMap({
       duration: 1200,
       essential: true,
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focus, pulseAt, ready]);
 
-  /* ---------- radar sweep anchor (imperative: avoids render loops) ---------- */
   const [clat, clon] = [center[0], center[1]];
   useEffect(() => {
     const map = mapRef.current;

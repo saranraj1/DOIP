@@ -44,7 +44,6 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/analytics", label: "Analytics", code: "S12", icon: BarChart3 },
   { to: "/advisor", label: "Investment Advisor", code: "S13", icon: Landmark },
   { to: "/warroom", label: "War-Room", code: "S14", icon: Users },
-  // P2-1: Scenario DSL Editor — planner and admin roles
   {
     to: "/scenario-editor",
     label: "Scenario Editor",

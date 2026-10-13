@@ -1,6 +1,3 @@
-// §18.8 — count-up animation for live numeric stat values.
-// Returns an animated display value that smoothly interpolates toward `target`.
-// When the value changes, the number counts up/down over `duration` ms.
 import { useEffect, useRef, useState } from "react";
 
 export function useCountUp(

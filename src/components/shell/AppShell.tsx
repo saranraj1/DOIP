@@ -16,12 +16,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [aiOpen, setAiOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
-  // Emit custom events so deeply nested route components can react
-  // without prop drilling (follow-mode on S3 map, feed focus on any screen).
   const emitFollow = () => window.dispatchEvent(new CustomEvent("doip:follow-toggle"));
   const emitFocusFeed = () => window.dispatchEvent(new CustomEvent("doip:focus-feed"));
 
-  // §18.8 global keyboard shortcuts.
   useKeyboard({
     " ": () => {
       if (role === "viewer") return;

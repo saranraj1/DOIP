@@ -10,7 +10,6 @@ from typing import Any
 import re
 import yaml
 
-# AGENTS.md Ch.13: Whitelisted DSL actions — strictly defensive and support
 WHITELISTED_ACTIONS = {
     "spawn_weather",
     "create_incident",
@@ -19,7 +18,6 @@ WHITELISTED_ACTIONS = {
     "raise_alert",
 }
 
-# Whitelisted condition functions in rules
 WHITELISTED_CONDITIONS = {
     "unit_in_weather",
     "resource_below",
@@ -51,7 +49,6 @@ def validate_scenario_dict(raw: dict[str, Any], source_name: str = "inline") -> 
     if not isinstance(raw, dict):
         raise DSLValidationError(f"{source_name}: Root must be a mapping/dict")
 
-    # 1. Required top-level fields
     for req in ("name", "seed", "duration_minutes"):
         if req not in raw:
             raise DSLValidationError(f"{source_name}: Missing required field '{req}'")
@@ -59,7 +56,6 @@ def validate_scenario_dict(raw: dict[str, Any], source_name: str = "inline") -> 
     if not isinstance(raw["seed"], int):
         raise DSLValidationError(f"{source_name}: 'seed' must be an integer")
 
-    # 2. Collect explicit entities
     entities: list[dict[str, Any]] = list(raw.get("entities", []))
     known_ids: set[str] = set()
 
@@ -71,7 +67,6 @@ def validate_scenario_dict(raw: dict[str, Any], source_name: str = "inline") -> 
             raise DSLValidationError(f"{source_name}: Duplicate entity id '{eid}'")
         known_ids.add(eid)
 
-    # 3. Expand entity_groups
     groups = raw.get("entity_groups", [])
     if not isinstance(groups, list):
         raise DSLValidationError(f"{source_name}: 'entity_groups' must be a list")
@@ -88,14 +83,12 @@ def validate_scenario_dict(raw: dict[str, Any], source_name: str = "inline") -> 
                 raise DSLValidationError(f"{source_name}: Group expanded id '{eid}' already exists")
             known_ids.add(eid)
             
-            # Deep copy template and assign id
             ent = dict(template)
             ent["id"] = eid
             if "callsign" not in ent:
                 ent["callsign"] = f"{prefix.upper()}-{start_idx + i}"
             entities.append(ent)
 
-    # 4. Validate timeline actions
     timeline = raw.get("timeline", [])
     if not isinstance(timeline, list):
         raise DSLValidationError(f"{source_name}: 'timeline' must be a list")
@@ -110,13 +103,10 @@ def validate_scenario_dict(raw: dict[str, Any], source_name: str = "inline") -> 
             )
 
         params = item.get("params", {})
-        # Verify entity target reference if specified
         target = params.get("target") or params.get("unit")
         if target and target in known_ids:
-            # Valid reference
             pass
 
-    # 5. Validate rules
     rules = raw.get("rules", [])
     for r_idx, rule in enumerate(rules):
         when_clause = str(rule.get("when", ""))

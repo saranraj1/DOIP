@@ -21,7 +21,7 @@ class CorpusDoc:
     tags: list[str]
     version: str
     content: str
-    sections: list[tuple[str, str]]  # (heading, text)
+    sections: list[tuple[str, str]]  
 
 
 class CorpusIndex:
@@ -55,7 +55,6 @@ class CorpusIndex:
         version = "1.0"
         body = text
 
-        # Parse YAML frontmatter if present
         if text.startswith("---"):
             parts = text.split("---", 2)
             if len(parts) >= 3:
@@ -72,7 +71,6 @@ class CorpusIndex:
                         tag_str = line.split(":", 1)[1].strip()
                         tags = [t.strip().strip("[]'\"") for t in tag_str.split(",") if t.strip()]
 
-        # Split body into sections by markdown heading
         sections: list[tuple[str, str]] = []
         current_heading = "Overview"
         current_lines: list[str] = []
@@ -110,26 +108,21 @@ class CorpusIndex:
             score = 0.0
             doc_text_lower = doc.content.lower()
 
-            # Exact doc_id match gives high priority
             if doc.doc_id.lower() in tokens or doc.doc_id.lower() in query.lower():
                 score += 10.0
 
-            # Tag matches
             for tag in doc.tags:
                 if tag.lower() in tokens:
                     score += 4.0
 
-            # Title matches
             for token in tokens:
                 if token in doc.title.lower():
                     score += 3.0
-                # Content frequency
                 cnt = doc_text_lower.count(token)
                 if cnt > 0:
                     score += min(cnt * 0.5, 4.0)
 
             if score > 0:
-                # Find best matching section excerpt
                 best_sec_title = "Reference"
                 best_excerpt = doc.content[:300]
                 max_sec_score = 0
@@ -154,17 +147,8 @@ class CorpusIndex:
         return scored[:top_k]
 
 
-# Global singleton corpus
 corpus_index = CorpusIndex()
 
-
-# ===========================================================================
-# AI Grounding Verifier (AGENTS.md Chapter 13 Rule)
-# ===========================================================================
-# Every claim shown to users must cite an event id (e.g. INC-10, AL-5, EV-22)
-# or a corpus doc id (SOP-01..08, POL-01..03, REF-01..04).
-# Unverifiable claims are flagged, not displayed as unquestioned fact.
-# ===========================================================================
 
 def verify_grounding(
     text: str,
@@ -175,25 +159,21 @@ def verify_grounding(
     known_events = known_events or set()
     known_docs = known_docs or set(corpus_index.docs.keys())
 
-    # Detect cited doc tokens: e.g. SOP-01, POL-02, REF-03
     doc_cites = set(re.findall(r"\b(SOP-\d+|POL-\d+|REF-\d+)\b", text, re.IGNORECASE))
     doc_cites = {d.upper() for d in doc_cites}
 
-    # Detect cited event tokens: e.g. INC-10, AL-5, RUN-1, EV-12
     event_cites = set(re.findall(r"\b(INC-\w+|AL-\w+|RUN-\w+)\b", text, re.IGNORECASE))
     event_cites = {e.upper() for e in event_cites}
 
     valid_docs = [d for d in doc_cites if d in known_docs]
     invalid_docs = [d for d in doc_cites if d not in known_docs]
 
-    # If events are passed, check validity; if no active events exist, allow format-valid events
     valid_events = [e for e in event_cites if (not known_events or e in known_events)]
     invalid_events = [e for e in event_cites if known_events and e not in known_events]
 
     total_citations = len(valid_docs) + len(valid_events)
     has_unverified = bool(invalid_docs or invalid_events)
     
-    # Text with assertions but zero citations has unverified status
     needs_citation = any(keyword in text.lower() for keyword in ["mandates", "requires", "protocol", "violation", "incident", "casualty"])
     if needs_citation and total_citations == 0:
         grounded = False
@@ -240,7 +220,6 @@ def query_rag(
     title = top_doc["title"]
     excerpt = top_doc["excerpt"]
 
-    # Synthesize grounded answer citing doc
     answer = f"According to [{doc_id}] ({title}): {excerpt}"
     grounding = verify_grounding(answer, known_events=known_events)
 

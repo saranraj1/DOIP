@@ -16,7 +16,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 from .engine import SimEngine
 from . import db as db_mod
 
-SNAPSHOT_EVERY = 10   # ticks between world_json upserts
+SNAPSHOT_EVERY = 10  
 
 
 class SimSession:
@@ -26,15 +26,13 @@ class SimSession:
         self.seed = seed
         self.scenario_id = scenario_id
         self.speed = speed
-        self.run_id = run_id   # set by main.py so we can key the DB snapshot
+        self.run_id = run_id   
         self._clients: list[WebSocket] = []
         self._paused = False
         self._stopped = False
         self._task: asyncio.Task | None = None
-        self._log: list[dict] = []    # full event log for run persistence
+        self._log: list[dict] = []   
 
-        # Lightweight world state maintained for snapshot serialisation.
-        # Populated from world_init and updated incrementally.
         self._units: dict = {}
         self._depots: dict = {}
         self._personnel: dict = {}
@@ -66,13 +64,12 @@ class SimSession:
                     self._apply(d)
                 await self._broadcast(events)
 
-            # Persist snapshot every SNAPSHOT_EVERY ticks
             if self.run_id and self.engine.tick % SNAPSHOT_EVERY == 0:
                 world = self._world_snapshot()
                 try:
                     db_mod.save_world_snapshot(self.run_id, world)
                 except Exception:
-                    pass   # fail-soft: live stream continues even if DB write fails
+                    pass   
 
     # ------------------------------------------------------------------
     def _apply(self, ev: dict) -> None:
@@ -174,7 +171,6 @@ class SimSession:
     async def connect(self, ws: WebSocket) -> None:
         await ws.accept()
         self._clients.append(ws)
-        # Send the full in-memory log so late joiners see the current world state.
         if self._log:
             try:
                 await ws.send_text(json.dumps({"type": "log_replay", "events": self._log}))
@@ -217,7 +213,6 @@ class SimSession:
                     await self.set_speed(float(msg.get("value", 1)))
                 elif cmd == "inject":
                     await self.inject(msg.get("event", {}))
-                # unknown commands ignored
         except WebSocketDisconnect:
             pass
         finally:

@@ -1,4 +1,3 @@
-// §18.8 — keyboard shortcut reference sheet, toggled with the `?` key.
 import { cn } from "@/lib/utils";
 import { X } from "lucide-react";
 
