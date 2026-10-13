@@ -15,8 +15,25 @@ export const ATTRIBUTION = "© OpenStreetMap contributors © CARTO";
 export type Basemap = "imagery" | "dark";
 const BASEMAP_KEY = "doip.basemap";
 
-const ESRI_TILES =
-  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+const MAP_API_KEY =
+  (import.meta.env["VITE_ARCGIS_API_KEY"] as string | undefined) ||
+  (import.meta.env["VITE_MAP_API_KEY"] as string | undefined);
+
+const SATELLITE_TILES: string[] = MAP_API_KEY
+  ? [
+      `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?token=${MAP_API_KEY}`,
+    ]
+  : [
+      "https://mt0.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
+      "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
+      "https://mt2.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
+      "https://mt3.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
+    ];
+
+const SATELLITE_ATTRIBUTION = MAP_API_KEY
+  ? "Esri, Maxar, Earthstar Geographics"
+  : "© Google Maps Satellite";
+
 const CARTO_LABELS = [
   "https://a.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png".replace("{r}", ""),
   "https://b.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}.png",
@@ -26,12 +43,12 @@ const CARTO_LABELS = [
 const imageryStyle = (): StyleSpecification => ({
   version: 8,
   sources: {
-    "esri-imagery": {
+    "satellite-imagery": {
       type: "raster",
-      tiles: [ESRI_TILES],
+      tiles: SATELLITE_TILES,
       tileSize: 256,
-      maxzoom: 19,
-      attribution: "Esri, Maxar, Earthstar Geographics",
+      maxzoom: 20,
+      attribution: SATELLITE_ATTRIBUTION,
     },
     "carto-labels": {
       type: "raster",
@@ -44,9 +61,9 @@ const imageryStyle = (): StyleSpecification => ({
   layers: [
     { id: "bg", type: "background", paint: { "background-color": "#0A0A0A" } },
     {
-      id: "esri-imagery-layer",
+      id: "satellite-imagery-layer",
       type: "raster",
-      source: "esri-imagery",
+      source: "satellite-imagery",
       paint: {
         "raster-opacity": 1,
         "raster-brightness-max": 0.55,
