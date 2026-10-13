@@ -60,7 +60,7 @@ const frontend = spawn(npxCmd, ["vite", "dev", "--port", "8080", "--host"], {
   cwd: rootDir,
   shell: isWin,
   stdio: ["ignore", "pipe", "pipe"],
-  env: process.env,
+  env: { ...process.env, NODE_OPTIONS: (process.env.NODE_OPTIONS || "") + " --max-old-space-size=4096" },
 });
 
 prefixStream(frontend.stdout, "FRONTEND", "32"); // Green

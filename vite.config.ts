@@ -11,6 +11,11 @@ export default defineConfig({
     optimizeDeps: {
       exclude: ["maplibre-gl"],
     },
+    server: {
+      watch: {
+        ignored: ["**/.output/**", "**/backend/**", "**/.tanstack/**", "**/.wrangler/**"],
+      },
+    },
   },
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).

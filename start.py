@@ -38,9 +38,12 @@ backend_proc = subprocess.Popen(
 )
 
 # 2. Start Frontend
+frontend_env = os.environ.copy()
+frontend_env["NODE_OPTIONS"] = (frontend_env.get("NODE_OPTIONS", "") + " --max-old-space-size=4096").strip()
 frontend_proc = subprocess.Popen(
     [npx_cmd, "vite", "dev", "--port", "8080", "--host"],
     cwd=str(ROOT_DIR),
+    env=frontend_env,
     shell=IS_WIN,
 )
 

@@ -6,9 +6,9 @@
   "scripts": {
     "start": "node scripts/start.js",
     "dev:all": "node scripts/start.js",
-    "dev": "vite dev",
-    "build": "vite build",
-    "build:dev": "vite build --mode development",
+    "dev": "node --max-old-space-size=4096 ./node_modules/vite/bin/vite.js dev",
+    "build": "node --max-old-space-size=4096 ./node_modules/vite/bin/vite.js build",
+    "build:dev": "node --max-old-space-size=4096 ./node_modules/vite/bin/vite.js build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write ."
